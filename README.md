@@ -79,5 +79,20 @@ znote/
 docker compose up -d --build
 ```
 
+## ❓ 常见问题 (FAQ)
+
+### 数据库权限报错 (Permission Denied)
+
+如果在 Linux 服务器上部署时遇到数据库写入权限错误（如 `SQLSTATE[HY000]: General error: 8 attempt to write a readonly database`），请在宿主机上执行以下命令来修复 `data` 目录的权限：
+
+```bash
+# 在宿主机项目根目录下执行
+# 假设你的数据库挂载目录为 ./data
+sudo chmod -R 775 ./data
+sudo chown -R 33:33 ./data
+```
+
+> **说明**：`33:33` 是容器内 `www-data` 用户的 UID:GID，确保容器内的 Apache 进程有权限读写映射进来的目录。
+
 ---
 Enjoy your writing! ✍️
