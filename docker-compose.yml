@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  app:
+    build: .
+    container_name: znote_app
+    ports:
+      - "9096:80"
+    volumes:
+      - ./src:/var/www/html
+      - ./data:/var/www/data
+    environment:
+      - APACHE_DOCUMENT_ROOT=/var/www/html/public
+    restart: always
