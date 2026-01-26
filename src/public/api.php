@@ -81,7 +81,8 @@ if ($action === 'get_notes' && $method === 'GET') {
     $params = [$user_id];
 
     if ($q) {
-        $sql .= " AND (title LIKE ? OR summary LIKE ?)";
+        $sql .= " AND (title LIKE ? OR summary LIKE ? OR content LIKE ?)";
+        $params[] = "%$q%";
         $params[] = "%$q%";
         $params[] = "%$q%";
     }
