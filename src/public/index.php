@@ -86,7 +86,7 @@ if (!isset($_SESSION['user_id'])) {
     </aside>
 
     <!-- Main Content -->
-    <main id="mainContent" class="flex-1 flex-col relative bg-white dark:bg-gray-900 hidden md:flex w-full">
+    <main id="mainContent" class="flex-1 flex-col relative bg-white dark:bg-gray-900 hidden md:flex w-full min-h-0">
         <!-- Editor Header/Toolbar -->
         <div class="border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 md:px-8 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
             <div class="flex items-center w-full">
@@ -111,7 +111,7 @@ if (!isset($_SESSION['user_id'])) {
         </div>
 
         <!-- Rich Text Editor Container -->
-        <div id="editor" class="flex-1 dark:text-gray-200"></div>
+        <div id="editor" class="flex-1 min-h-0 overflow-y-auto dark:text-gray-200"></div>
     </main>
 
     <!-- Floating Action Button -->
