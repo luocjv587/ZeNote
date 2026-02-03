@@ -81,8 +81,7 @@ if ($action === 'get_notes' && $method === 'GET') {
     $params = [$user_id];
 
     if ($q) {
-        $sql .= " AND (title LIKE ? OR summary LIKE ? OR content LIKE ?)";
-        $params[] = "%$q%";
+        $sql .= " AND (title LIKE ? OR summary LIKE ?)";
         $params[] = "%$q%";
         $params[] = "%$q%";
     }
@@ -119,20 +118,20 @@ if ($action === 'save_note' && $method === 'POST') {
     $content = $input['content'] ?? '';
 
     if ($id) {
-        // Generate summary
-        $plainText = strip_tags($content);
-        $hasImage = strpos($content, '<img') !== false;
-        $summary = ($hasImage ? '[图片] ' : '') . mb_substr($plainText, 0, 100);
+        $withPlaceholders = preg_replace('/<img\b[^>]*>/i', ' [图片] ', $content);
+        $plainText = trim(html_entity_decode(strip_tags($withPlaceholders)));
+        $plainText = preg_replace('/\s+/u', ' ', $plainText);
+        $summary = $plainText;
 
         // Update
         $stmt = $pdo->prepare("UPDATE z_article SET title = ?, content = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?");
         $stmt->execute([$title, $content, $summary, $id, $user_id]);
         echo json_encode(['id' => $id, 'success' => true]);
     } else {
-        // Generate summary
-        $plainText = strip_tags($content);
-        $hasImage = strpos($content, '<img') !== false;
-        $summary = ($hasImage ? '[图片] ' : '') . mb_substr($plainText, 0, 100);
+        $withPlaceholders = preg_replace('/<img\b[^>]*>/i', ' [图片] ', $content);
+        $plainText = trim(html_entity_decode(strip_tags($withPlaceholders)));
+        $plainText = preg_replace('/\s+/u', ' ', $plainText);
+        $summary = $plainText;
 
         // Create
         $stmt = $pdo->prepare("INSERT INTO z_article (user_id, title, content, summary) VALUES (?, ?, ?, ?)");
