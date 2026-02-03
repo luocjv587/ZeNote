@@ -14,8 +14,17 @@ try {
             user_id INTEGER NOT NULL,
             title TEXT NOT NULL,
             content TEXT,
+            notebook_id INTEGER NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES z_user(id)
+        )",
+        "CREATE TABLE IF NOT EXISTS z_notebook (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, name),
             FOREIGN KEY (user_id) REFERENCES z_user(id)
         )"
     ];

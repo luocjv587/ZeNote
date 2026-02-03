@@ -54,9 +54,11 @@ if (!isset($_SESSION['user_id'])) {
         <div class="p-6 flex flex-col space-y-4">
             <div class="flex justify-between items-center">
                 <h1 class="text-xl font-bold tracking-tight dark:text-white">ZeNote</h1>
-                <div class="flex space-x-2">
-                    <button id="langToggleBtn" class="p-2 text-sm font-medium hover:bg-white dark:hover:bg-gray-800 rounded-full transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700 dark:text-gray-300">
-                        CN
+                <div class="flex items-center space-x-2">
+                    <button id="settingsBtn" title="Settings" class="p-2 hover:bg-white dark:hover:bg-gray-800 rounded-full transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.25 2.25c.414 0 .75.336.75.75v.512c.578.115 1.128.322 1.63.614l.362-.362a.75.75 0 011.06 0l.53.53a.75.75 0 010 1.06l-.362.362c.292.502.499 1.052.614 1.63h.512c.414 0 .75.336.75.75v.75c0 .414-.336.75-.75.75h-.512a6.73 6.73 0 01-.614 1.63l.362.362a.75.75 0 010 1.06l-.53.53a.75.75 0 01-1.06 0l-.362-.362a6.73 6.73 0 01-1.63.614v.512a.75.75 0 01-.75.75h-.75a.75.75 0 01-.75-.75v-.512a6.73 6.73 0 01-1.63-.614l-.362.362a.75.75 0 01-1.06 0l-.53-.53a.75.75 0 010-1.06l.362-.362a6.73 6.73 0 01-.614-1.63H3.75a.75.75 0 01-.75-.75v-.75c0-.414.336-.75.75-.75h.512c.115-.578.322-1.128.614-1.63l-.362-.362a.75.75 0 010-1.06l.53-.53a.75.75 0 011.06 0l.362.362c.502-.292 1.052-.499 1.63-.614V3a.75.75 0 01.75-.75h.75zM12 9.75a2.25 2.25 0 100 4.5 2.25 2.25 0 000-4.5z"/>
+                        </svg>
                     </button>
                     <button id="themeToggleBtn" title="Toggle Theme" class="p-2 hover:bg-white dark:hover:bg-gray-800 rounded-full transition-colors border border-transparent hover:border-gray-200 dark:hover:border-gray-700">
                         <!-- Sun Icon -->
@@ -71,6 +73,16 @@ if (!isset($_SESSION['user_id'])) {
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
                     </button>
                 </div>
+            </div>
+            <div class="mt-2 flex items-center space-x-2">
+                <select id="notebookFilter" class="w-full md:w-auto md:max-w-[200px] flex-1 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-200 focus:ring-0 focus:border-gray-300 dark:focus:border-gray-600 truncate"></select>
+                <button id="newNotebookBtn" title="New Notebook" class="px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center space-x-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7.5A2.5 2.5 0 015.5 5h4l2 2H19a2 2 0 012 2v6.5A2.5 2.5 0 0118.5 18h-13A2.5 2.5 0 013 15.5v-8z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 10.5v4m2-2h-4"/>
+                    </svg>
+                    <span id="newNotebookBtnLabel" class="text-xs">新建笔记本</span>
+                </button>
             </div>
             <!-- Global Search -->
             <div class="relative">
@@ -104,6 +116,7 @@ if (!isset($_SESSION['user_id'])) {
             
             <div class="flex items-center space-x-2 md:space-x-4 shrink-0">
                 <span id="saveStatus" class="text-xs text-gray-400 dark:text-gray-500"></span>
+                <select id="noteNotebookSelect" class="text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-200 focus:ring-0 focus:border-gray-300 dark:focus:border-gray-600 max-w-[180px] truncate"></select>
                 <button id="deleteBtn" class="p-2 text-gray-400 hover:text-red-500 transition-colors hidden">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
@@ -113,6 +126,23 @@ if (!isset($_SESSION['user_id'])) {
         <!-- Rich Text Editor Container -->
         <div id="editor" class="flex-1 min-h-0 overflow-y-auto dark:text-gray-200"></div>
     </main>
+
+    <div id="notebookModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+        <div id="notebookModalBackdrop" class="absolute inset-0 bg-black/30"></div>
+        <div class="relative w-[90%] max-w-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div class="text-center">
+                <h2 id="notebookModalTitle" class="text-lg font-semibold text-gray-900 dark:text-gray-100">新建笔记本</h2>
+                <p id="notebookModalSubtitle" class="text-xs text-gray-400 dark:text-gray-500 mt-1">输入名称即可创建</p>
+            </div>
+            <div class="mt-4">
+                <input id="notebookNameInput" type="text" class="w-full bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-gray-300 dark:focus:border-gray-700 rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-0" />
+            </div>
+            <div class="mt-5 flex items-center justify-between">
+                <button id="notebookCancelBtn" class="px-4 py-2 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">取消</button>
+                <button id="notebookCreateBtn" class="px-5 py-2 text-sm rounded-full bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity">创建</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Floating Action Button -->
     <div class="fixed bottom-6 right-6 z-50 group">
@@ -297,12 +327,22 @@ if (!isset($_SESSION['user_id'])) {
         const backBtn = document.getElementById('backBtn');
         const globalSearchEl = document.getElementById('globalSearch');
         const themeToggleBtn = document.getElementById('themeToggleBtn');
-         const langToggleBtn = document.getElementById('langToggleBtn');
-         const sunIcon = document.getElementById('sunIcon');
-         const moonIcon = document.getElementById('moonIcon');
-         const globalSearchInput = document.getElementById('globalSearch');
-         const noteTitleInput = document.getElementById('noteTitle');
-         const editorPlaceholder = document.querySelector('.ql-editor');
+        const sunIcon = document.getElementById('sunIcon');
+        const moonIcon = document.getElementById('moonIcon');
+        const globalSearchInput = document.getElementById('globalSearch');
+        const noteTitleInput = document.getElementById('noteTitle');
+        const editorPlaceholder = document.querySelector('.ql-editor');
+        const notebookFilterEl = document.getElementById('notebookFilter');
+        const newNotebookBtn = document.getElementById('newNotebookBtn');
+        const newNotebookBtnLabel = document.getElementById('newNotebookBtnLabel');
+        const noteNotebookSelectEl = document.getElementById('noteNotebookSelect');
+        const notebookModal = document.getElementById('notebookModal');
+        const notebookModalBackdrop = document.getElementById('notebookModalBackdrop');
+        const notebookModalTitle = document.getElementById('notebookModalTitle');
+        const notebookModalSubtitle = document.getElementById('notebookModalSubtitle');
+        const notebookNameInput = document.getElementById('notebookNameInput');
+        const notebookCancelBtn = document.getElementById('notebookCancelBtn');
+        const notebookCreateBtn = document.getElementById('notebookCreateBtn');
  
          // Language Logic
          let currentLang = localStorage.getItem('lang') || 'cn';
@@ -312,28 +352,48 @@ if (!isset($_SESSION['user_id'])) {
         var autoSaveTimeout = null;
         var blockAutoSaveUntilUser = false;
  
-         const uiTexts = {
-             cn: {
-                 searchPlaceholder: '搜索',
-                 titlePlaceholder: '标题',
-                 editorPlaceholder: '开始写作...',
-                 newNote: '新建笔记',
-                 logout: '退出登录',
-                 deleteConfirm: '删除此笔记？',
-                 saving: '保存中...',
-                 saved: '已保存'
-             },
-             en: {
-                 searchPlaceholder: 'Search',
-                 titlePlaceholder: 'Title',
-                 editorPlaceholder: 'Start writing...',
-                 newNote: 'New Note',
-                 logout: 'Logout',
-                 deleteConfirm: 'Delete this note?',
-                 saving: 'Saving...',
-                 saved: 'Saved'
-             }
-         };
+        const uiTexts = {
+            cn: {
+                searchPlaceholder: '搜索',
+                titlePlaceholder: '标题',
+                editorPlaceholder: '开始写作...',
+                newNote: '新建笔记',
+                logout: '退出登录',
+                deleteConfirm: '删除此笔记？',
+                saving: '保存中...',
+                saved: '已保存',
+                notebookAll: '全部笔记',
+                notebookNone: '未选择笔记本',
+                newNotebook: '新建笔记本',
+                notebookCreateTitle: '新建笔记本',
+                notebookCreateSubtitle: '输入名称即可创建',
+                notebookCreatePlaceholder: '笔记本名称',
+                notebookCancel: '取消',
+                notebookCreate: '创建'
+            },
+            en: {
+                searchPlaceholder: 'Search',
+                titlePlaceholder: 'Title',
+                editorPlaceholder: 'Start writing...',
+                newNote: 'New Note',
+                logout: 'Logout',
+                deleteConfirm: 'Delete this note?',
+                saving: 'Saving...',
+                saved: 'Saved',
+                notebookAll: 'All Notes',
+                notebookNone: 'No Notebook',
+                newNotebook: 'New Notebook',
+                notebookCreateTitle: 'New Notebook',
+                notebookCreateSubtitle: 'Enter a name to create',
+                notebookCreatePlaceholder: 'Notebook name',
+                notebookCancel: 'Cancel',
+                notebookCreate: 'Create'
+            }
+        };
+
+        let notebooks = [];
+        let selectedNotebookId = null;
+        let currentNoteNotebookId = null;
 
          const imageDBPromise = new Promise((resolve) => {
              const req = indexedDB.open('ZeNoteImages', 1);
@@ -469,31 +529,24 @@ if (!isset($_SESSION['user_id'])) {
              currentLang = lang;
              localStorage.setItem('lang', lang);
              
-             // Update Button Text
-             langToggleBtn.textContent = lang.toUpperCase();
-             
-             // Update Placeholders
              globalSearchInput.placeholder = t.searchPlaceholder;
              noteTitleInput.placeholder = t.titlePlaceholder;
-             // Quill placeholder is tricky to update dynamically via API, so we use dataset or CSS
              document.querySelector('.ql-editor').dataset.placeholder = t.editorPlaceholder;
-             // But Quill uses ::before content: attr(data-placeholder), so updating the attribute works if configured
-             // Re-initializing is heavy. Let's try direct DOM manipulation of the data attribute if Quill supports it
-             // Quill sets data-placeholder on .ql-editor
              const qlEditor = document.querySelector('.ql-editor');
              if (qlEditor) qlEditor.setAttribute('data-placeholder', t.editorPlaceholder);
 
-             // Update Tooltips
              document.getElementById('newNoteBtn').title = t.newNote;
              document.getElementById('logoutBtn').title = t.logout;
+            newNotebookBtn.title = t.newNotebook;
+            if (newNotebookBtnLabel) newNotebookBtnLabel.textContent = t.newNotebook;
+            if (notebookModalTitle) notebookModalTitle.textContent = t.notebookCreateTitle;
+            if (notebookModalSubtitle) notebookModalSubtitle.textContent = t.notebookCreateSubtitle;
+            if (notebookNameInput) notebookNameInput.placeholder = t.notebookCreatePlaceholder;
+            if (notebookCancelBtn) notebookCancelBtn.textContent = t.notebookCancel;
+            if (notebookCreateBtn) notebookCreateBtn.textContent = t.notebookCreate;
+            renderNotebookOptions();
          }
 
-         langToggleBtn.addEventListener('click', () => {
-             const newLang = currentLang === 'cn' ? 'en' : 'cn';
-             updateLanguageUI(newLang);
-         });
-
-         // Initialize Language
          updateLanguageUI(currentLang);
  
          // Dark Mode Logic
@@ -520,11 +573,119 @@ if (!isset($_SESSION['user_id'])) {
             const isDark = document.documentElement.classList.contains('dark');
             updateTheme(!isDark);
         });
+        document.getElementById('settingsBtn').addEventListener('click', () => {
+            window.location.href = 'settings.php';
+        });
 
         let page = 1;
         let loading = false;
         let hasMore = true;
         let searchTimeout;
+
+        async function fetchNotebooks() {
+            const res = await fetch('api.php?action=get_notebooks');
+            const data = await res.json();
+            notebooks = data.notebooks || [];
+            renderNotebookOptions();
+        }
+
+        function renderNotebookOptions() {
+            const t = uiTexts[currentLang];
+            if (notebookFilterEl) {
+                const opts = [
+                    `<option value="" ${selectedNotebookId === null ? 'selected' : ''}>${t.notebookAll}</option>`
+                ].concat(notebooks.map(n => `<option value="${n.id}" ${selectedNotebookId == n.id ? 'selected' : ''}>${n.name}</option>`));
+                notebookFilterEl.innerHTML = opts.join('');
+            }
+            if (noteNotebookSelectEl) {
+                const opts2 = [
+                    `<option value="0" ${currentNoteNotebookId === null ? 'selected' : ''}>${t.notebookNone}</option>`
+                ].concat(notebooks.map(n => `<option value="${n.id}" ${currentNoteNotebookId == n.id ? 'selected' : ''}>${n.name}</option>`));
+                noteNotebookSelectEl.innerHTML = opts2.join('');
+            }
+        }
+
+        function openNotebookModal() {
+            if (!notebookModal) return;
+            notebookModal.classList.remove('hidden');
+            notebookModal.classList.add('flex');
+            if (notebookNameInput) {
+                notebookNameInput.value = '';
+                notebookNameInput.focus();
+            }
+        }
+
+        function closeNotebookModal() {
+            if (!notebookModal) return;
+            notebookModal.classList.add('hidden');
+            notebookModal.classList.remove('flex');
+            if (notebookNameInput) notebookNameInput.value = '';
+        }
+
+        async function submitNotebookCreate() {
+            const name = notebookNameInput ? notebookNameInput.value.trim() : '';
+            if (!name) return;
+            const res = await fetch('api.php?action=create_notebook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            if (res.ok) {
+                const d = await res.json().catch(() => null);
+                await fetchNotebooks();
+                if (d && d.id) {
+                    selectedNotebookId = d.id;
+                    if (!currentNoteId) currentNoteNotebookId = d.id;
+                    renderNotebookOptions();
+                    fetchNotes(true);
+                }
+                closeNotebookModal();
+            }
+        }
+
+        if (newNotebookBtn) {
+            newNotebookBtn.addEventListener('click', openNotebookModal);
+        }
+        if (notebookCancelBtn) {
+            notebookCancelBtn.addEventListener('click', closeNotebookModal);
+        }
+        if (notebookModalBackdrop) {
+            notebookModalBackdrop.addEventListener('click', closeNotebookModal);
+        }
+        if (notebookCreateBtn) {
+            notebookCreateBtn.addEventListener('click', submitNotebookCreate);
+        }
+        if (notebookNameInput) {
+            notebookNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    submitNotebookCreate();
+                }
+                if (e.key === 'Escape') {
+                    closeNotebookModal();
+                }
+            });
+        }
+
+        if (notebookFilterEl) {
+            notebookFilterEl.addEventListener('change', () => {
+                selectedNotebookId = notebookFilterEl.value ? parseInt(notebookFilterEl.value) : null;
+                fetchNotes(true);
+            });
+        }
+
+        if (noteNotebookSelectEl) {
+            noteNotebookSelectEl.addEventListener('change', async () => {
+                const nbId = noteNotebookSelectEl.value === '0' ? null : parseInt(noteNotebookSelectEl.value);
+                currentNoteNotebookId = nbId;
+                if (!currentNoteId) return;
+                await fetch('api.php?action=set_note_notebook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentNoteId, notebook_id: nbId })
+                });
+                fetchNotes(true);
+            });
+        }
 
         // Mobile UI Helpers
         function showEditor() {
@@ -605,7 +766,11 @@ if (!isset($_SESSION['user_id'])) {
 
             const query = globalSearchEl.value.trim();
             try {
-                const res = await fetch(`api.php?action=get_notes&page=${page}&limit=20&q=${encodeURIComponent(query)}`);
+                let url = `api.php?action=get_notes&page=${page}&limit=20&q=${encodeURIComponent(query)}`;
+                if (selectedNotebookId !== null) {
+                    url += `&notebook_id=${selectedNotebookId}`;
+                }
+                const res = await fetch(url);
                 const data = await res.json();
                 
                 if (reset) {
@@ -707,6 +872,8 @@ if (!isset($_SESSION['user_id'])) {
                 await resolveImages(id);
                 quill.enable(true);
                 deleteBtn.classList.remove('hidden');
+                currentNoteNotebookId = data.note.notebook_id || null;
+                renderNotebookOptions();
                 
                 showEditor(); // Switch to editor view on mobile
             } catch (err) {
@@ -731,6 +898,8 @@ if (!isset($_SESSION['user_id'])) {
             deleteBtn.classList.add('hidden');
             showEditor(); // Switch to editor view on mobile
             noteTitleEl.focus();
+            currentNoteNotebookId = selectedNotebookId;
+            renderNotebookOptions();
         }
 
         async function togglePin(id) {
@@ -756,7 +925,8 @@ if (!isset($_SESSION['user_id'])) {
                 body: JSON.stringify({
                     id: currentNoteId,
                     title: noteTitleEl.value || 'Untitled',
-                    content: quill.root.innerHTML
+                    content: quill.root.innerHTML,
+                    notebook_id: currentNoteNotebookId ?? null
                 })
             });
             const result = await res.json();
@@ -827,7 +997,10 @@ if (!isset($_SESSION['user_id'])) {
         });
 
         // Initial load
-        fetchNotes();
+        (async () => {
+            await fetchNotebooks();
+            fetchNotes();
+        })();
 
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {

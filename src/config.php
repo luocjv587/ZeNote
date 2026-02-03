@@ -45,6 +45,15 @@ try {
         FOREIGN KEY (article_id) REFERENCES z_article(id)
     )");
 
+    $pdo->exec("CREATE TABLE IF NOT EXISTS z_notebook (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, name),
+        FOREIGN KEY (user_id) REFERENCES z_user(id)
+    )");
+
     // Migration: Add summary column if it doesn't exist
     try {
         $pdo->query("SELECT summary FROM z_article LIMIT 1");
@@ -57,6 +66,12 @@ try {
         $pdo->query("SELECT is_pinned FROM z_article LIMIT 1");
     } catch (PDOException $e) {
         $pdo->exec("ALTER TABLE z_article ADD COLUMN is_pinned INTEGER DEFAULT 0");
+    }
+
+    try {
+        $pdo->query("SELECT notebook_id FROM z_article LIMIT 1");
+    } catch (PDOException $e) {
+        $pdo->exec("ALTER TABLE z_article ADD COLUMN notebook_id INTEGER NULL");
     }
 
 } catch (PDOException $e) {

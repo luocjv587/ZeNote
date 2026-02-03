@@ -75,10 +75,16 @@ if ($action === 'get_notes' && $method === 'GET') {
     $page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
     $q = isset($_GET['q']) ? trim($_GET['q']) : '';
+    $notebookId = isset($_GET['notebook_id']) && $_GET['notebook_id'] !== '' ? (int)$_GET['notebook_id'] : null;
     $offset = ($page - 1) * $limit;
 
     $sql = "SELECT id, title, updated_at, summary as preview, is_pinned FROM z_article WHERE user_id = ?";
     $params = [$user_id];
+
+    if ($notebookId !== null) {
+        $sql .= " AND notebook_id = ?";
+        $params[] = $notebookId;
+    }
 
     if ($q) {
         $sql .= " AND (title LIKE ? OR summary LIKE ?)";
@@ -119,7 +125,7 @@ if ($action === 'get_image' && $method === 'GET') {
 
 if ($action === 'get_note' && $method === 'GET') {
     $id = $_GET['id'] ?? 0;
-    $stmt = $pdo->prepare("SELECT id, title, updated_at, summary, is_pinned, content FROM z_article WHERE id = ? AND user_id = ?");
+    $stmt = $pdo->prepare("SELECT id, title, updated_at, summary, is_pinned, content, notebook_id FROM z_article WHERE id = ? AND user_id = ?");
     $stmt->execute([$id, $user_id]);
     $note = $stmt->fetch();
     if ($note) {
@@ -148,6 +154,7 @@ if ($action === 'save_note' && $method === 'POST') {
     $id = $input['id'] ?? null;
     $title = $input['title'] ?? 'Untitled';
     $content = $input['content'] ?? '';
+    $notebookId = array_key_exists('notebook_id', $input) && $input['notebook_id'] !== '' ? (int)$input['notebook_id'] : null;
 
     // Extract images into z_image and replace content with placeholders
     $images = [];
@@ -184,8 +191,8 @@ if ($action === 'save_note' && $method === 'POST') {
 
     if ($id) {
         // Update note with replaced content
-        $stmt = $pdo->prepare("UPDATE z_article SET title = ?, content = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?");
-        $stmt->execute([$title, $replacedContent, $summary, $id, $user_id]);
+        $stmt = $pdo->prepare("UPDATE z_article SET title = ?, content = ?, summary = ?, notebook_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?");
+        $stmt->execute([$title, $replacedContent, $summary, $notebookId, $id, $user_id]);
         // Upsert images
         foreach ($images as $img) {
             if (!empty($img['data'])) {
@@ -197,8 +204,8 @@ if ($action === 'save_note' && $method === 'POST') {
         echo json_encode(['id' => $id, 'success' => true]);
     } else {
         // Create note with replaced content
-        $stmt = $pdo->prepare("INSERT INTO z_article (user_id, title, content, summary) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$user_id, $title, $replacedContent, $summary]);
+        $stmt = $pdo->prepare("INSERT INTO z_article (user_id, title, content, summary, notebook_id) VALUES (?, ?, ?, ?, ?)");
+        $stmt->execute([$user_id, $title, $replacedContent, $summary, $notebookId]);
         $newId = (int)$pdo->lastInsertId();
         // Insert images
         foreach ($images as $img) {
@@ -210,6 +217,41 @@ if ($action === 'save_note' && $method === 'POST') {
         }
         echo json_encode(['id' => $newId, 'success' => true]);
     }
+    exit;
+}
+
+if ($action === 'get_notebooks' && $method === 'GET') {
+    $stmt = $pdo->prepare("SELECT id, name FROM z_notebook WHERE user_id = ? ORDER BY created_at DESC");
+    $stmt->execute([$user_id]);
+    $items = $stmt->fetchAll();
+    echo json_encode(['notebooks' => $items]);
+    exit;
+}
+
+if ($action === 'create_notebook' && $method === 'POST') {
+    $name = trim($input['name'] ?? '');
+    if ($name === '') {
+        http_response_code(400);
+        echo json_encode(['error' => 'Name required']);
+        exit;
+    }
+    try {
+        $stmt = $pdo->prepare("INSERT INTO z_notebook (user_id, name) VALUES (?, ?)");
+        $stmt->execute([$user_id, $name]);
+        echo json_encode(['success' => true, 'id' => (int)$pdo->lastInsertId(), 'name' => $name]);
+    } catch (PDOException $e) {
+        http_response_code(409);
+        echo json_encode(['error' => 'Notebook already exists']);
+    }
+    exit;
+}
+
+if ($action === 'set_note_notebook' && $method === 'POST') {
+    $id = $input['id'] ?? 0;
+    $notebookId = array_key_exists('notebook_id', $input) && $input['notebook_id'] !== '' ? (int)$input['notebook_id'] : null;
+    $stmt = $pdo->prepare("UPDATE z_article SET notebook_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?");
+    $stmt->execute([$notebookId, $id, $user_id]);
+    echo json_encode(['success' => true]);
     exit;
 }
 
@@ -237,6 +279,34 @@ if ($action === 'toggle_pin' && $method === 'POST') {
         http_response_code(404);
         echo json_encode(['error' => 'Note not found']);
     }
+    exit;
+}
+
+if ($action === 'get_db_info' && $method === 'GET') {
+    $size = file_exists(DB_PATH) ? filesize(DB_PATH) : 0;
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $display = $size;
+    $unitIndex = 0;
+    while ($display >= 1024 && $unitIndex < count($units) - 1) {
+        $display /= 1024;
+        $unitIndex++;
+    }
+    $sizeText = $unitIndex === 0 ? $display . ' ' . $units[$unitIndex] : number_format($display, 2) . ' ' . $units[$unitIndex];
+    echo json_encode(['size_bytes' => $size, 'size_text' => $sizeText]);
+    exit;
+}
+
+if ($action === 'download_db' && $method === 'GET') {
+    if (!file_exists(DB_PATH)) {
+        http_response_code(404);
+        echo json_encode(['error' => 'Database not found']);
+        exit;
+    }
+    $filename = 'zenote-' . date('Ymd-His') . '.db';
+    header('Content-Type: application/octet-stream');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Content-Length: ' . filesize(DB_PATH));
+    readfile(DB_PATH);
     exit;
 }
 
