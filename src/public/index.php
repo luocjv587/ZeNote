@@ -307,6 +307,11 @@ if (!isset($_SESSION['user_id'])) {
          // Language Logic
          let currentLang = localStorage.getItem('lang') || 'cn';
          
+        // Autosave controls (declare early to allow use in functions above)
+        var suppressAutoSave = false;
+        var autoSaveTimeout = null;
+        var blockAutoSaveUntilUser = false;
+ 
          const uiTexts = {
              cn: {
                  searchPlaceholder: '搜索',
@@ -329,6 +334,135 @@ if (!isset($_SESSION['user_id'])) {
                  saved: 'Saved'
              }
          };
+
+         const imageDBPromise = new Promise((resolve) => {
+             const req = indexedDB.open('ZeNoteImages', 1);
+             req.onupgradeneeded = () => {
+                 const db = req.result;
+                 if (!db.objectStoreNames.contains('images')) {
+                     db.createObjectStore('images', { keyPath: 'id' });
+                 }
+             };
+             req.onsuccess = () => resolve(req.result);
+             req.onerror = () => resolve(null);
+         });
+
+         async function saveImage(id, dataURL) {
+             const db = await imageDBPromise;
+             if (!db) return;
+             return new Promise((resolve, reject) => {
+                 const tx = db.transaction('images', 'readwrite');
+                 tx.objectStore('images').put({ id, dataURL });
+                 tx.oncomplete = () => resolve();
+                 tx.onerror = (e) => reject(e);
+             });
+         }
+
+         async function getImage(id) {
+             const db = await imageDBPromise;
+             if (!db) return null;
+             return new Promise((resolve) => {
+                 const tx = db.transaction('images', 'readonly');
+                 const req = tx.objectStore('images').get(id);
+                 req.onsuccess = () => resolve(req.result ? req.result.dataURL : null);
+                 req.onerror = () => resolve(null);
+             });
+         }
+
+         async function hashDataURL(dataURL) {
+             const enc = new TextEncoder();
+             const bytes = enc.encode(dataURL);
+             const digest = await crypto.subtle.digest('SHA-256', bytes);
+             const arr = Array.from(new Uint8Array(digest));
+             return arr.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+         }
+         async function hashString(str) {
+             const enc = new TextEncoder();
+             const bytes = enc.encode(str);
+             const digest = await crypto.subtle.digest('SHA-256', bytes);
+             const arr = Array.from(new Uint8Array(digest));
+             return arr.map(b => b.toString(16).padStart(2, '0')).join('').slice(0, 12);
+         }
+
+         async function ensureImageIdsAndCache() {
+             const imgs = quill.root.querySelectorAll('img');
+             for (const img of imgs) {
+                 let id = img.getAttribute('data-image-id');
+                 const src = img.getAttribute('src') || '';
+                 if (!id) {
+                     const alt = img.getAttribute('alt') || '';
+                     const m = alt.match(/image-([a-f0-9]{12})/);
+                     if (m) {
+                         id = m[1];
+                         img.setAttribute('data-image-id', id);
+                     } else {
+                         id = src ? (src.startsWith('data:') ? await hashDataURL(src) : await hashString(src)) : Math.random().toString(36).slice(2, 14);
+                         img.setAttribute('data-image-id', id);
+                         img.setAttribute('alt', `image-${id}`);
+                     }
+                     if (src && src.startsWith('data:')) {
+                         await saveImage(id, src);
+                     }
+                 } else {
+                     const alt = img.getAttribute('alt') || '';
+                     if (!alt || !alt.includes(id)) {
+                         img.setAttribute('alt', `image-${id}`);
+                     }
+                 }
+             }
+         }
+
+         async function resolveImages(noteId) {
+             suppressAutoSave = true;
+             quill.off('text-change');
+             if (autoSaveTimeout) {
+                 clearTimeout(autoSaveTimeout);
+                 autoSaveTimeout = null;
+             }
+             try {
+                 const imgs = quill.root.querySelectorAll('img');
+                 for (const img of imgs) {
+                     let id = img.getAttribute('data-image-id');
+                     const src = img.getAttribute('src') || '';
+                     if (!id) {
+                         const alt = img.getAttribute('alt') || '';
+                         const m = alt.match(/image-([a-f0-9]{12})/);
+                         if (m) {
+                             id = m[1];
+                             img.setAttribute('data-image-id', id);
+                         } else {
+                             id = src ? (src.startsWith('data:') ? await hashDataURL(src) : await hashString(src)) : Math.random().toString(36).slice(2, 14);
+                             img.setAttribute('data-image-id', id);
+                             img.setAttribute('alt', `image-${id}`);
+                         }
+                     }
+                     const cached = await getImage(id);
+                     if (cached) {
+                         if (src !== cached) img.setAttribute('src', cached);
+                         continue;
+                     }
+                     try {
+                         const r = await fetch(`api.php?action=get_image&image_id=${encodeURIComponent(id)}`);
+                         const d = await r.json();
+                         if (d && d.src) {
+                             img.setAttribute('src', d.src);
+                             await saveImage(id, d.src);
+                             continue;
+                         }
+                     } catch (_) {}
+                     if (src && src.startsWith('data:')) {
+                         await saveImage(id, src);
+                     }
+                 }
+             } finally {
+                 suppressAutoSave = false;
+                 quill.on('text-change', triggerAutoSave);
+                 if (autoSaveTimeout) {
+                     clearTimeout(autoSaveTimeout);
+                     autoSaveTimeout = null;
+                 }
+             }
+         }
 
          function updateLanguageUI(lang) {
              const t = uiTexts[lang];
@@ -545,6 +679,7 @@ if (!isset($_SESSION['user_id'])) {
             if (currentNoteId === id) return;
             currentNoteId = id;
             updateSidebarSelection(id); // Immediate UI update
+            blockAutoSaveUntilUser = true;
             
             // Optional: Show loading state in editor or keep old content until new one loads
             // For now, we clear it to indicate change
@@ -552,6 +687,11 @@ if (!isset($_SESSION['user_id'])) {
             quill.enable(false); // Disable editing while loading
             
             try {
+                suppressAutoSave = true;
+                if (autoSaveTimeout) {
+                    clearTimeout(autoSaveTimeout);
+                    autoSaveTimeout = null;
+                }
                 const res = await fetch(`api.php?action=get_note&id=${id}`);
                 const data = await res.json();
                 
@@ -564,6 +704,7 @@ if (!isset($_SESSION['user_id'])) {
                 
                 quill.setContents([], 'api');
                 quill.clipboard.dangerouslyPasteHTML(0, data.note.content || '', 'api');
+                await resolveImages(id);
                 quill.enable(true);
                 deleteBtn.classList.remove('hidden');
                 
@@ -571,11 +712,18 @@ if (!isset($_SESSION['user_id'])) {
             } catch (err) {
                 console.error(err);
                 quill.enable(true);
+            } finally {
+                suppressAutoSave = false;
+                if (autoSaveTimeout) {
+                    clearTimeout(autoSaveTimeout);
+                    autoSaveTimeout = null;
+                }
             }
         }
 
         function createNewNote() {
             currentNoteId = null;
+            blockAutoSaveUntilUser = true;
             noteTitleEl.value = '';
             noteTimeEl.textContent = '';
             noteTimeEl.classList.add('hidden');
@@ -597,9 +745,11 @@ if (!isset($_SESSION['user_id'])) {
         }
 
         async function saveNote() {
+            if (suppressAutoSave) return;
             if (!noteTitleEl.value && !quill.root.innerText.trim()) return;
 
             saveStatusEl.textContent = uiTexts[currentLang].saving;
+            await ensureImageIdsAndCache();
             const res = await fetch('api.php?action=save_note', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -651,15 +801,22 @@ if (!isset($_SESSION['user_id'])) {
         }
 
         // Auto-save logic
-        let autoSaveTimeout;
         const triggerAutoSave = (delta, oldDelta, source) => {
             if (source === 'api') return; // Ignore changes from API (loading note)
+            if (suppressAutoSave) return; // Ignore programmatic image replacements
+            if (blockAutoSaveUntilUser) return;
             clearTimeout(autoSaveTimeout);
             autoSaveTimeout = setTimeout(saveNote, 1000);
         };
 
-        noteTitleEl.addEventListener('input', () => triggerAutoSave(null, null, 'user'));
+        noteTitleEl.addEventListener('input', () => {
+            blockAutoSaveUntilUser = false;
+            triggerAutoSave(null, null, 'user');
+        });
         quill.on('text-change', triggerAutoSave);
+        quill.root.addEventListener('keydown', () => { blockAutoSaveUntilUser = false; });
+        quill.root.addEventListener('paste', () => { blockAutoSaveUntilUser = false; });
+        quill.root.addEventListener('drop', () => { blockAutoSaveUntilUser = false; });
 
         document.getElementById('newNoteBtn').addEventListener('click', createNewNote);
         document.getElementById('deleteBtn').addEventListener('click', deleteNote);

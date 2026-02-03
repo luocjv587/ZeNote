@@ -31,6 +31,20 @@ try {
         FOREIGN KEY (user_id) REFERENCES z_user(id)
     )");
 
+    // Images table: store image data separately and reference by image_id
+    $pdo->exec("CREATE TABLE IF NOT EXISTS z_image (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        article_id INTEGER NOT NULL,
+        image_id TEXT NOT NULL,
+        data TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, image_id),
+        FOREIGN KEY (user_id) REFERENCES z_user(id),
+        FOREIGN KEY (article_id) REFERENCES z_article(id)
+    )");
+
     // Migration: Add summary column if it doesn't exist
     try {
         $pdo->query("SELECT summary FROM z_article LIMIT 1");

@@ -98,9 +98,28 @@ if ($action === 'get_notes' && $method === 'GET') {
     exit;
 }
 
+if ($action === 'get_image' && $method === 'GET') {
+    $imageId = isset($_GET['image_id']) ? trim($_GET['image_id']) : '';
+    if (!$imageId) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Invalid parameters']);
+        exit;
+    }
+    $stmt = $pdo->prepare("SELECT data FROM z_image WHERE user_id = ? AND image_id = ?");
+    $stmt->execute([$user_id, $imageId]);
+    $img = $stmt->fetch();
+    if ($img && !empty($img['data'])) {
+        echo json_encode(['image_id' => $imageId, 'src' => $img['data']]);
+    } else {
+        http_response_code(404);
+        echo json_encode(['error' => 'Image not found']);
+    }
+    exit;
+}
+
 if ($action === 'get_note' && $method === 'GET') {
     $id = $_GET['id'] ?? 0;
-    $stmt = $pdo->prepare("SELECT * FROM z_article WHERE id = ? AND user_id = ?");
+    $stmt = $pdo->prepare("SELECT id, title, updated_at, summary, is_pinned, content FROM z_article WHERE id = ? AND user_id = ?");
     $stmt->execute([$id, $user_id]);
     $note = $stmt->fetch();
     if ($note) {
@@ -112,31 +131,84 @@ if ($action === 'get_note' && $method === 'GET') {
     exit;
 }
 
+if ($action === 'get_note_content' && $method === 'GET') {
+    $id = $_GET['id'] ?? 0;
+    $stmt = $pdo->prepare("SELECT content FROM z_article WHERE id = ? AND user_id = ?");
+    $stmt->execute([$id, $user_id]);
+    $note = $stmt->fetch();
+    if ($note) {
+        echo json_encode(['id' => (int)$id, 'content' => $note['content'] ?? '']);
+    } else {
+        http_response_code(404);
+        echo json_encode(['error' => 'Note not found']);
+    }
+    exit;
+}
 if ($action === 'save_note' && $method === 'POST') {
     $id = $input['id'] ?? null;
     $title = $input['title'] ?? 'Untitled';
     $content = $input['content'] ?? '';
 
-    if ($id) {
-        $withPlaceholders = preg_replace('/<img\b[^>]*>/i', ' [图片] ', $content);
-        $plainText = trim(html_entity_decode(strip_tags($withPlaceholders)));
-        $plainText = preg_replace('/\s+/u', ' ', $plainText);
-        $summary = $plainText;
+    // Extract images into z_image and replace content with placeholders
+    $images = [];
+    $replacedContent = preg_replace_callback('/<img\b[^>]*>/i', function ($matches) use (&$images) {
+        $imgTag = $matches[0];
+        $src = '';
+        if (preg_match('/src=["\']([^"\']+)["\']/', $imgTag, $s)) {
+            $src = $s[1];
+        }
+        $imgId = '';
+        if (preg_match('/data-image-id=["\']([^"\']+)["\']/', $imgTag, $m)) {
+            $imgId = $m[1];
+        }
+        if (!$imgId) {
+            $basis = $src ?: $imgTag;
+            $imgId = substr(sha1($basis), 0, 12);
+        }
+        $images[] = ['image_id' => $imgId, 'data' => $src];
+        return '<img data-image-id="' . $imgId . '" alt="image-' . $imgId . '" src="about:blank">';
+    }, $content);
 
-        // Update
+    // Build summary text with image placeholders
+    $summaryText = preg_replace_callback('/<img\b[^>]*>/i', function ($m) {
+        $tag = $m[0];
+        $imgId = '';
+        if (preg_match('/data-image-id=["\']([^"\']+)["\']/', $tag, $mm)) {
+            $imgId = $mm[1];
+        }
+        return $imgId ? " [图片-$imgId] " : " [图片] ";
+    }, $replacedContent);
+    $plainText = trim(html_entity_decode(strip_tags($summaryText)));
+    $plainText = preg_replace('/\s+/u', ' ', $plainText);
+    $summary = $plainText;
+
+    if ($id) {
+        // Update note with replaced content
         $stmt = $pdo->prepare("UPDATE z_article SET title = ?, content = ?, summary = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?");
-        $stmt->execute([$title, $content, $summary, $id, $user_id]);
+        $stmt->execute([$title, $replacedContent, $summary, $id, $user_id]);
+        // Upsert images
+        foreach ($images as $img) {
+            if (!empty($img['data'])) {
+                $stmt = $pdo->prepare("INSERT INTO z_image (user_id, article_id, image_id, data) VALUES (?, ?, ?, ?)
+                    ON CONFLICT(user_id, image_id) DO UPDATE SET article_id=excluded.article_id, data=excluded.data, updated_at=CURRENT_TIMESTAMP");
+                $stmt->execute([$user_id, $id, $img['image_id'], $img['data']]);
+            }
+        }
         echo json_encode(['id' => $id, 'success' => true]);
     } else {
-        $withPlaceholders = preg_replace('/<img\b[^>]*>/i', ' [图片] ', $content);
-        $plainText = trim(html_entity_decode(strip_tags($withPlaceholders)));
-        $plainText = preg_replace('/\s+/u', ' ', $plainText);
-        $summary = $plainText;
-
-        // Create
+        // Create note with replaced content
         $stmt = $pdo->prepare("INSERT INTO z_article (user_id, title, content, summary) VALUES (?, ?, ?, ?)");
-        $stmt->execute([$user_id, $title, $content, $summary]);
-        echo json_encode(['id' => $pdo->lastInsertId(), 'success' => true]);
+        $stmt->execute([$user_id, $title, $replacedContent, $summary]);
+        $newId = (int)$pdo->lastInsertId();
+        // Insert images
+        foreach ($images as $img) {
+            if (!empty($img['data'])) {
+                $stmt = $pdo->prepare("INSERT INTO z_image (user_id, article_id, image_id, data) VALUES (?, ?, ?, ?)
+                    ON CONFLICT(user_id, image_id) DO UPDATE SET article_id=excluded.article_id, data=excluded.data, updated_at=CURRENT_TIMESTAMP");
+                $stmt->execute([$user_id, $newId, $img['image_id'], $img['data']]);
+            }
+        }
+        echo json_encode(['id' => $newId, 'success' => true]);
     }
     exit;
 }
