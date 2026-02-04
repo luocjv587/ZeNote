@@ -937,7 +937,10 @@ if (!isset($_SESSION['user_id'])) {
         }
 
         async function loadNote(id) {
-            if (currentNoteId === id) return;
+            if (currentNoteId === id) {
+                showEditor();
+                return;
+            }
             currentNoteId = id;
             updateSidebarSelection(id); // Immediate UI update
             blockAutoSaveUntilUser = true;
