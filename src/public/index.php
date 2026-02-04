@@ -19,9 +19,22 @@ if (!isset($_SESSION['user_id'])) {
             darkMode: 'class',
         }
     </script>
-    <!-- Quill Rich Text Editor -->
-    <link href="https://cdn.quilljs.com/1.3.6/quill.snow.css" rel="stylesheet">
-    <script src="https://cdn.quilljs.com/1.3.6/quill.js"></script>
+    <!-- Highlight.js (for syntax highlighting) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-dark.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+    
+    <!-- KaTeX (for formulas) -->
+    <link href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <!-- Quill Rich Text Editor (v2.0) -->
+    <link href="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.snow.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/quill-table-better@1/dist/quill-table-better.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/quill@2/dist/quill.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/quill-table-better@1/dist/quill-table-better.js"></script>
+    <link href="https://cdn.jsdelivr.net/npm/quilljs-markdown@1.2.0/dist/quilljs-markdown-common-style.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/quilljs-markdown@1.2.0/dist/quilljs-markdown.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         .ql-toolbar.ql-snow { border: none; border-bottom: 1px solid #f3f4f6; }
@@ -152,9 +165,17 @@ if (!isset($_SESSION['user_id'])) {
                 <span class="mr-2 text-xs font-medium">JSON</span>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
             </button>
+            <button id="calculateBtn" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 flex items-center justify-center whitespace-nowrap" title="Calculate">
+                <span class="mr-2 text-xs font-medium">Calc</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+            </button>
             <button id="insertTimeBtn" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 flex items-center justify-center whitespace-nowrap" title="Insert Time">
                 <span class="mr-2 text-xs font-medium">Time</span>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            </button>
+            <button id="exportPdfBtn" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 flex items-center justify-center whitespace-nowrap" title="Export to PDF">
+                <span class="mr-2 text-xs font-medium">PDF</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             </button>
         </div>
         <button class="bg-black dark:bg-white text-white dark:text-black p-4 rounded-full shadow-xl hover:scale-105 transition-transform">
@@ -164,18 +185,48 @@ if (!isset($_SESSION['user_id'])) {
 
     <script>
         let currentNoteId = null;
+        // Register Table Module
+        if (typeof QuillTableBetter !== 'undefined') {
+            Quill.register({
+                'modules/table-better': QuillTableBetter
+            }, true);
+        }
+
         let quill = new Quill('#editor', {
             theme: 'snow',
             placeholder: 'Start writing...',
             modules: {
+                syntax: true,
+                table: false,
+                'table-better': {
+                    language: 'en_US',
+                    menus: ['column', 'row', 'merge', 'table', 'cell', 'wrap', 'copy', 'delete'],
+                    toolbarTable: true
+                },
+                keyboard: {
+                    bindings: QuillTableBetter.keyboardBindings
+                },
                 toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline'],
-                    ['image', 'link', 'code-block'],
-                    [{ 'list': 'ordered'}, { 'list': 'bullet' }]
+                    [{ 'font': [] }, { 'size': [] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }],
+                    [{ 'header': 1 }, { 'header': 2 }, 'blockquote', 'code-block'],
+                    [{ 'list': 'ordered'}, { 'list': 'bullet' }, { 'list': 'check' }],
+                    [{ 'indent': '-1'}, { 'indent': '+1' }],
+                    [{ 'direction': 'rtl' }],
+                    [{ 'align': [] }],
+                    ['link', 'image', 'video', 'formula'],
+                    ['clean'],
+                    ['table-better']
                 ]
             }
         });
+
+        // Initialize Markdown Module
+        if (typeof QuillMarkdown !== 'undefined') {
+            new QuillMarkdown(quill, {});
+        }
 
         // Add Editor Search UI
         const editorContainer = document.querySelector('#editor').parentElement;
@@ -307,8 +358,14 @@ if (!isset($_SESSION['user_id'])) {
             }
         });
 
-        // Add keyboard shortcut for search (Ctrl+F / Cmd+F)
+        // Add keyboard shortcuts
         document.addEventListener('keydown', (e) => {
+            // Ctrl+S / Cmd+S to Save
+            if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+                e.preventDefault();
+                saveNote();
+            }
+            // Ctrl+F / Cmd+F to Search
             if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
                 e.preventDefault();
                 if (!mainContent.classList.contains('hidden') || window.innerWidth >= 768) {
@@ -695,6 +752,8 @@ if (!isset($_SESSION['user_id'])) {
                 // sidebar.classList.add('hidden'); // Optional: hide completely if animation not needed
                 mainContent.classList.remove('hidden');
                 mainContent.classList.add('flex');
+                // Push history state for mobile back button support
+                history.pushState({ view: 'editor' }, null, '');
             }
         }
 
@@ -722,6 +781,42 @@ if (!isset($_SESSION['user_id'])) {
             quill.insertText(range.index, timeStr);
             quill.setSelection(range.index + timeStr.length);
             saveNote(); // Trigger save
+        });
+
+        document.getElementById('exportPdfBtn').addEventListener('click', () => {
+            const element = document.querySelector('.ql-editor');
+            const opt = {
+                margin:       1,
+                filename:     (document.getElementById('noteTitle').value || 'note') + '.pdf',
+                image:        { type: 'jpeg', quality: 0.98 },
+                html2canvas:  { scale: 2 },
+                jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+            };
+            html2pdf().set(opt).from(element).save();
+        });
+
+        document.getElementById('calculateBtn').addEventListener('click', () => {
+            const range = quill.getSelection();
+            if (!range || range.length === 0) return;
+            
+            const text = quill.getText(range.index, range.length);
+            // Allow numbers, operators (+, -, *, /), parentheses, dots, and spaces
+            if (/^[0-9+\-*/().\s]+$/.test(text)) {
+                try {
+                    // Safe evaluation for basic math
+                    const result = new Function('return ' + text)();
+                    // Check if result is a number and finite
+                    if (typeof result === 'number' && isFinite(result)) {
+                        const newText = text + ' = ' + result;
+                        quill.deleteText(range.index, range.length);
+                        quill.insertText(range.index, newText);
+                        quill.setSelection(range.index + newText.length);
+                        saveNote();
+                    }
+                } catch (e) {
+                    console.error('Calculation error', e);
+                }
+            }
         });
 
         document.getElementById('formatJsonBtn').addEventListener('click', () => {
@@ -895,7 +990,7 @@ if (!isset($_SESSION['user_id'])) {
             noteTitleEl.value = '';
             noteTimeEl.textContent = '';
             noteTimeEl.classList.add('hidden');
-            quill.root.innerHTML = '';
+            quill.setContents([]);
             deleteBtn.classList.add('hidden');
             showEditor(); // Switch to editor view on mobile
             noteTitleEl.focus();
@@ -991,7 +1086,24 @@ if (!isset($_SESSION['user_id'])) {
 
         document.getElementById('newNoteBtn').addEventListener('click', createNewNote);
         document.getElementById('deleteBtn').addEventListener('click', deleteNote);
-        backBtn.addEventListener('click', showList);
+        
+        // Handle back button click
+        backBtn.addEventListener('click', () => {
+            if (history.state && history.state.view === 'editor') {
+                history.back();
+            } else {
+                showList();
+            }
+        });
+        
+        // Handle mobile hardware back button
+        window.addEventListener('popstate', (event) => {
+             // If we are popping back from editor (state is null or different), show list
+             if (!event.state || event.state.view !== 'editor') {
+                 showList();
+             }
+        });
+
         document.getElementById('logoutBtn').addEventListener('click', async () => {
             await fetch('api.php?action=logout');
             window.location.href = 'login.php';
