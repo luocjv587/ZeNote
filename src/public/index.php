@@ -975,6 +975,12 @@ if (!isset($_SESSION['user_id'])) {
                 renderNotebookOptions();
                 
                 showEditor(); // Switch to editor view on mobile
+                
+                // Prevent keyboard from popping up on mobile
+                if (window.innerWidth < 768) {
+                    noteTitleEl.blur();
+                    quill.blur();
+                }
             } catch (err) {
                 console.error(err);
                 quill.enable(true);
