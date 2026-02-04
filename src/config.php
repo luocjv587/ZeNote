@@ -1,5 +1,5 @@
 <?php
-define('DB_PATH', '/var/www/data/znote.db');
+define('DB_PATH', __DIR__ . '/../data/znote.db');
 
 try {
     $dir = dirname(DB_PATH);
@@ -26,8 +26,23 @@ try {
         content TEXT,
         summary TEXT,
         is_pinned INTEGER DEFAULT 0,
+        is_deleted INTEGER DEFAULT 0,
+        deleted_at DATETIME DEFAULT NULL,
+        notebook_id INTEGER NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES z_user(id)
+    )");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS z_article_history (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        article_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        title TEXT,
+        content TEXT,
+        summary TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (article_id) REFERENCES z_article(id),
         FOREIGN KEY (user_id) REFERENCES z_user(id)
     )");
 
@@ -72,6 +87,14 @@ try {
         $pdo->query("SELECT notebook_id FROM z_article LIMIT 1");
     } catch (PDOException $e) {
         $pdo->exec("ALTER TABLE z_article ADD COLUMN notebook_id INTEGER NULL");
+    }
+
+    // Migration: Add is_deleted and deleted_at
+    try {
+        $pdo->query("SELECT is_deleted FROM z_article LIMIT 1");
+    } catch (PDOException $e) {
+        $pdo->exec("ALTER TABLE z_article ADD COLUMN is_deleted INTEGER DEFAULT 0");
+        $pdo->exec("ALTER TABLE z_article ADD COLUMN deleted_at DATETIME DEFAULT NULL");
     }
 
 } catch (PDOException $e) {

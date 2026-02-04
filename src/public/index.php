@@ -90,12 +90,12 @@ if (!isset($_SESSION['user_id'])) {
             </div>
             <div class="mt-2 flex items-center space-x-2">
                 <select id="notebookFilter" class="w-full md:w-auto md:max-w-[200px] flex-1 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-200 focus:ring-0 focus:border-gray-300 dark:focus:border-gray-600 truncate"></select>
-                <button id="newNotebookBtn" title="New Notebook" class="px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center space-x-1">
+                <button id="newNotebookBtn" title="Manage" class="px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center space-x-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7.5A2.5 2.5 0 015.5 5h4l2 2H19a2 2 0 012 2v6.5A2.5 2.5 0 0118.5 18h-13A2.5 2.5 0 013 15.5v-8z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 10.5v4m2-2h-4"/>
                     </svg>
-                    <span id="newNotebookBtnLabel" class="text-xs">新建笔记本</span>
+                    <span id="newNotebookBtnLabel" class="text-xs">管理</span>
                 </button>
             </div>
             <!-- Global Search -->
@@ -131,7 +131,23 @@ if (!isset($_SESSION['user_id'])) {
             <div class="flex items-center space-x-2 md:space-x-4 shrink-0">
                 <span id="saveStatus" class="text-xs text-gray-400 dark:text-gray-500"></span>
                 <select id="noteNotebookSelect" class="text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-200 focus:ring-0 focus:border-gray-300 dark:focus:border-gray-600 max-w-[180px] truncate"></select>
-                <button id="deleteBtn" class="p-2 text-gray-400 hover:text-red-500 transition-colors hidden">
+                
+                <!-- History Button -->
+                <button id="historyBtn" class="p-2 text-gray-400 hover:text-black dark:hover:text-white transition-colors hidden" title="History">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                </button>
+
+                <!-- Restore Button (Trash Mode) -->
+                <button id="restoreBtn" class="p-2 text-green-500 hover:text-green-600 transition-colors hidden" title="Restore">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                </button>
+
+                <!-- Delete Forever Button (Trash Mode) -->
+                <button id="deleteForeverBtn" class="p-2 text-red-500 hover:text-red-600 transition-colors hidden" title="Delete Forever">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                </button>
+
+                <button id="deleteBtn" class="p-2 text-gray-400 hover:text-red-500 transition-colors hidden" title="Move to Trash">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                 </button>
             </div>
@@ -148,12 +164,38 @@ if (!isset($_SESSION['user_id'])) {
                 <h2 id="notebookModalTitle" class="text-lg font-semibold text-gray-900 dark:text-gray-100">新建笔记本</h2>
                 <p id="notebookModalSubtitle" class="text-xs text-gray-400 dark:text-gray-500 mt-1">输入名称即可创建</p>
             </div>
-            <div class="mt-4">
-                <input id="notebookNameInput" type="text" class="w-full bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-gray-300 dark:focus:border-gray-700 rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-0" />
+            
+            <!-- Create Section -->
+            <div class="mt-4 flex space-x-2">
+                <input id="notebookNameInput" type="text" class="flex-1 bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-gray-300 dark:focus:border-gray-700 rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-0" />
+                <button id="notebookCreateBtn" class="px-4 py-2 text-sm rounded-xl bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity whitespace-nowrap">创建</button>
             </div>
-            <div class="mt-5 flex items-center justify-between">
-                <button id="notebookCancelBtn" class="px-4 py-2 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">取消</button>
-                <button id="notebookCreateBtn" class="px-5 py-2 text-sm rounded-full bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity">创建</button>
+
+            <!-- List Section -->
+            <div class="mt-6 border-t border-gray-100 dark:border-gray-800 pt-4">
+                <div id="notebookManagementList" class="max-h-48 overflow-y-auto space-y-2 pr-1">
+                    <!-- Items injected here -->
+                </div>
+            </div>
+
+            <!-- Footer -->
+            <div class="mt-5 flex justify-end">
+                <button id="notebookCancelBtn" class="px-4 py-2 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="historyModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+        <div id="historyModalBackdrop" class="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+        <div class="relative w-[90%] max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-6 max-h-[80vh] flex flex-col">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Version History</h2>
+                <button id="closeHistoryBtn" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="historyList" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                <!-- History items will be injected here -->
             </div>
         </div>
     </div>
@@ -185,6 +227,7 @@ if (!isset($_SESSION['user_id'])) {
 
     <script>
         let currentNoteId = null;
+        let isTrashMode = false;
         // Register Table Module
         if (typeof QuillTableBetter !== 'undefined') {
             Quill.register({
@@ -401,6 +444,7 @@ if (!isset($_SESSION['user_id'])) {
         const notebookNameInput = document.getElementById('notebookNameInput');
         const notebookCancelBtn = document.getElementById('notebookCancelBtn');
         const notebookCreateBtn = document.getElementById('notebookCreateBtn');
+        const notebookManagementList = document.getElementById('notebookManagementList');
  
          // Language Logic
          let currentLang = localStorage.getItem('lang') || 'cn';
@@ -422,12 +466,22 @@ if (!isset($_SESSION['user_id'])) {
                 saved: '已保存',
                 notebookAll: '全部笔记',
                 notebookNone: '未选择笔记本',
-                newNotebook: '新建笔记本',
-                notebookCreateTitle: '新建笔记本',
-                notebookCreateSubtitle: '输入名称即可创建',
+                newNotebook: '管理',
+                notebookCreateTitle: '管理笔记本',
+                notebookCreateSubtitle: '新建或管理现有笔记本',
                 notebookCreatePlaceholder: '笔记本名称',
-                notebookCancel: '取消',
-                notebookCreate: '创建'
+                notebookCancel: '关闭',
+                notebookCreate: '创建',
+                trashBin: '🗑️ 废纸篓',
+                historyTitle: '版本历史',
+                restore: '恢复',
+                deleteForever: '永久删除',
+                deleteForeverConfirm: '永久删除此笔记？无法撤销。',
+                restoreVersionConfirm: '恢复此版本？当前内容将保存为新的历史版本。',
+                noHistory: '无历史记录',
+                noSummary: '无摘要',
+                moveToTrash: '移至废纸篓',
+                deleteNotebookConfirm: '确定删除此笔记本吗？其中的笔记将被移出该笔记本。'
             },
             en: {
                 searchPlaceholder: 'Search',
@@ -440,12 +494,22 @@ if (!isset($_SESSION['user_id'])) {
                 saved: 'Saved',
                 notebookAll: 'All Notes',
                 notebookNone: 'No Notebook',
-                newNotebook: 'New Notebook',
-                notebookCreateTitle: 'New Notebook',
-                notebookCreateSubtitle: 'Enter a name to create',
+                newNotebook: 'Manage',
+                notebookCreateTitle: 'Manage Notebooks',
+                notebookCreateSubtitle: 'Create new or manage existing',
                 notebookCreatePlaceholder: 'Notebook name',
-                notebookCancel: 'Cancel',
-                notebookCreate: 'Create'
+                notebookCancel: 'Close',
+                notebookCreate: 'Create',
+                trashBin: '🗑️ Trash Bin',
+                historyTitle: 'Version History',
+                restore: 'Restore',
+                deleteForever: 'Delete Forever',
+                deleteForeverConfirm: 'Permanently delete this note? This cannot be undone.',
+                restoreVersionConfirm: 'Restore this version? Current content will be saved as a new history version.',
+                noHistory: 'No history available',
+                noSummary: 'No summary',
+                moveToTrash: 'Move to Trash',
+                deleteNotebookConfirm: 'Delete this notebook? Notes inside will be moved out.'
             }
         };
 
@@ -602,6 +666,15 @@ if (!isset($_SESSION['user_id'])) {
             if (notebookNameInput) notebookNameInput.placeholder = t.notebookCreatePlaceholder;
             if (notebookCancelBtn) notebookCancelBtn.textContent = t.notebookCancel;
             if (notebookCreateBtn) notebookCreateBtn.textContent = t.notebookCreate;
+            
+            // Update Trash/History UI
+            document.getElementById('historyBtn').title = t.historyTitle;
+            document.getElementById('restoreBtn').title = t.restore;
+            document.getElementById('deleteForeverBtn').title = t.deleteForever;
+            document.getElementById('deleteBtn').title = t.moveToTrash;
+            const historyModalTitle = document.querySelector('#historyModal h2');
+            if (historyModalTitle) historyModalTitle.textContent = t.historyTitle;
+            
             renderNotebookOptions();
          }
 
@@ -650,8 +723,12 @@ if (!isset($_SESSION['user_id'])) {
         function renderNotebookOptions() {
             const t = uiTexts[currentLang];
             if (notebookFilterEl) {
+                const trashSelected = isTrashMode ? 'selected' : '';
+                const allSelected = (selectedNotebookId === null && !isTrashMode) ? 'selected' : '';
+                
                 const opts = [
-                    `<option value="" ${selectedNotebookId === null ? 'selected' : ''}>${t.notebookAll}</option>`
+                    `<option value="" ${allSelected}>${t.notebookAll}</option>`,
+                    `<option value="trash" ${trashSelected}>${t.trashBin}</option>`
                 ].concat(notebooks.map(n => `<option value="${n.id}" ${selectedNotebookId == n.id ? 'selected' : ''}>${n.name}</option>`));
                 notebookFilterEl.innerHTML = opts.join('');
             }
@@ -663,6 +740,48 @@ if (!isset($_SESSION['user_id'])) {
             }
         }
 
+        function renderNotebookManagementList() {
+            if (!notebookManagementList) return;
+            if (notebooks.length === 0) {
+                notebookManagementList.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">No notebooks</p>';
+                return;
+            }
+            
+            notebookManagementList.innerHTML = notebooks.map(n => `
+                <div class="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg group">
+                    <span class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]">${n.name}</span>
+                    <button onclick="deleteNotebook(${n.id})" class="text-gray-400 hover:text-red-500 p-1 rounded transition-colors opacity-0 group-hover:opacity-100" title="Delete">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        window.deleteNotebook = async function(id) {
+            if (!confirm(uiTexts[currentLang].deleteNotebookConfirm)) return;
+            
+            const res = await fetch('api.php?action=delete_notebook', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id })
+            });
+            
+            if (res.ok) {
+                await fetchNotebooks();
+                renderNotebookManagementList();
+                
+                if (currentNoteNotebookId == id) {
+                    currentNoteNotebookId = null;
+                    renderNotebookOptions();
+                }
+                
+                if (selectedNotebookId == id) {
+                    selectedNotebookId = null;
+                    fetchNotes(true);
+                }
+            }
+        };
+
         function openNotebookModal() {
             if (!notebookModal) return;
             notebookModal.classList.remove('hidden');
@@ -671,6 +790,7 @@ if (!isset($_SESSION['user_id'])) {
                 notebookNameInput.value = '';
                 notebookNameInput.focus();
             }
+            renderNotebookManagementList();
         }
 
         function closeNotebookModal() {
@@ -692,12 +812,10 @@ if (!isset($_SESSION['user_id'])) {
                 const d = await res.json().catch(() => null);
                 await fetchNotebooks();
                 if (d && d.id) {
-                    selectedNotebookId = d.id;
-                    if (!currentNoteId) currentNoteNotebookId = d.id;
-                    renderNotebookOptions();
-                    fetchNotes(true);
+                     renderNotebookOptions();
                 }
-                closeNotebookModal();
+                if (notebookNameInput) notebookNameInput.value = '';
+                renderNotebookManagementList();
             }
         }
 
@@ -726,7 +844,14 @@ if (!isset($_SESSION['user_id'])) {
 
         if (notebookFilterEl) {
             notebookFilterEl.addEventListener('change', () => {
-                selectedNotebookId = notebookFilterEl.value ? parseInt(notebookFilterEl.value) : null;
+                const val = notebookFilterEl.value;
+                if (val === 'trash') {
+                    isTrashMode = true;
+                    selectedNotebookId = null;
+                } else {
+                    isTrashMode = false;
+                    selectedNotebookId = val ? parseInt(val) : null;
+                }
                 fetchNotes(true);
             });
         }
@@ -863,7 +988,9 @@ if (!isset($_SESSION['user_id'])) {
             const query = globalSearchEl.value.trim();
             try {
                 let url = `api.php?action=get_notes&page=${page}&limit=20&q=${encodeURIComponent(query)}`;
-                if (selectedNotebookId !== null) {
+                if (isTrashMode) {
+                    url += '&trash=1';
+                } else if (selectedNotebookId !== null) {
                     url += `&notebook_id=${selectedNotebookId}`;
                 }
                 const res = await fetch(url);
@@ -942,13 +1069,17 @@ if (!isset($_SESSION['user_id'])) {
                 return;
             }
             currentNoteId = id;
-            updateSidebarSelection(id); // Immediate UI update
+            updateSidebarSelection(id); 
             blockAutoSaveUntilUser = true;
             
-            // Optional: Show loading state in editor or keep old content until new one loads
-            // For now, we clear it to indicate change
             noteTitleEl.value = 'Loading...';
-            quill.enable(false); // Disable editing while loading
+            quill.enable(false);
+            
+            // Reset buttons
+            document.getElementById('historyBtn').classList.add('hidden');
+            document.getElementById('restoreBtn').classList.add('hidden');
+            document.getElementById('deleteForeverBtn').classList.add('hidden');
+            document.getElementById('deleteBtn').classList.add('hidden');
             
             try {
                 suppressAutoSave = true;
@@ -959,7 +1090,6 @@ if (!isset($_SESSION['user_id'])) {
                 const res = await fetch(`api.php?action=get_note&id=${id}`);
                 const data = await res.json();
                 
-                // Prevent race condition if user switched again
                 if (currentNoteId !== id) return;
 
                 noteTitleEl.value = data.note.title;
@@ -969,21 +1099,31 @@ if (!isset($_SESSION['user_id'])) {
                 quill.setContents([], 'api');
                 quill.clipboard.dangerouslyPasteHTML(0, data.note.content || '', 'api');
                 await resolveImages(id);
-                quill.enable(true);
-                deleteBtn.classList.remove('hidden');
+                
                 currentNoteNotebookId = data.note.notebook_id || null;
                 renderNotebookOptions();
+
+                if (isTrashMode) {
+                    quill.enable(false);
+                    noteTitleEl.disabled = true;
+                    document.getElementById('restoreBtn').classList.remove('hidden');
+                    document.getElementById('deleteForeverBtn').classList.remove('hidden');
+                } else {
+                    quill.enable(true);
+                    noteTitleEl.disabled = false;
+                    document.getElementById('deleteBtn').classList.remove('hidden');
+                    document.getElementById('historyBtn').classList.remove('hidden');
+                }
                 
-                showEditor(); // Switch to editor view on mobile
+                showEditor(); 
                 
-                // Prevent keyboard from popping up on mobile
                 if (window.innerWidth < 768) {
                     noteTitleEl.blur();
                     quill.blur();
                 }
             } catch (err) {
                 console.error(err);
-                quill.enable(true);
+                if (!isTrashMode) quill.enable(true);
             } finally {
                 suppressAutoSave = false;
                 if (autoSaveTimeout) {
@@ -1019,7 +1159,7 @@ if (!isset($_SESSION['user_id'])) {
         }
 
         async function saveNote() {
-            if (suppressAutoSave) return;
+            if (suppressAutoSave || isTrashMode) return;
             if (!noteTitleEl.value && !quill.root.innerText.trim()) return;
 
             saveStatusEl.textContent = uiTexts[currentLang].saving;
@@ -1123,6 +1263,88 @@ if (!isset($_SESSION['user_id'])) {
             await fetchNotebooks();
             fetchNotes();
         })();
+
+        // Trash & History Logic
+        async function restoreNote() {
+            if (!currentNoteId) return;
+            const res = await fetch('api.php?action=restore_note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: currentNoteId })
+            });
+            if (res.ok) {
+                createNewNote();
+                fetchNotes(true);
+            }
+        }
+
+        async function deleteForever() {
+            if (!currentNoteId || !confirm(uiTexts[currentLang].deleteForeverConfirm)) return;
+            const res = await fetch('api.php?action=delete_note', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: currentNoteId, force: true })
+            });
+            if (res.ok) {
+                createNewNote();
+                fetchNotes(true);
+            }
+        }
+
+        async function showHistory() {
+            if (!currentNoteId) return;
+            const res = await fetch(`api.php?action=get_history&id=${currentNoteId}`);
+            const data = await res.json();
+            const historyList = document.getElementById('historyList');
+            
+            if (!data.history || data.history.length === 0) {
+                historyList.innerHTML = '<p class="text-gray-500 text-center py-4">' + uiTexts[currentLang].noHistory + '</p>';
+            } else {
+                historyList.innerHTML = data.history.map(h => `
+                    <div class="flex justify-between items-center p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-800">
+                        <div>
+                            <p class="text-sm font-medium dark:text-gray-200">${new Date(h.created_at.replace(' ', 'T') + 'Z').toLocaleString()}</p>
+                            <p class="text-xs text-gray-500 truncate max-w-[200px]">${h.summary || uiTexts[currentLang].noSummary}</p>
+                        </div>
+                        <button onclick="restoreVersion(${h.id})" class="text-xs bg-black text-white dark:bg-white dark:text-black px-3 py-1.5 rounded-full hover:opacity-80">${uiTexts[currentLang].restore}</button>
+                    </div>
+                `).join('');
+            }
+            
+            document.getElementById('historyModal').classList.remove('hidden');
+            document.getElementById('historyModal').classList.add('flex');
+        }
+
+        function closeHistory() {
+            document.getElementById('historyModal').classList.add('hidden');
+            document.getElementById('historyModal').classList.remove('flex');
+        }
+
+        window.restoreVersion = async function(historyId) {
+            if (!confirm(uiTexts[currentLang].restoreVersionConfirm)) return;
+            
+            // First get the history detail
+            const res = await fetch(`api.php?action=get_history_detail&history_id=${historyId}`);
+            const data = await res.json();
+            
+            if (data.history) {
+                // Update current note content
+                noteTitleEl.value = data.history.title;
+                quill.setContents([]);
+                quill.clipboard.dangerouslyPasteHTML(0, data.history.content, 'api');
+                
+                // Trigger save to persist this restoration as current version
+                await saveNote();
+                
+                closeHistory();
+            }
+        };
+
+        document.getElementById('restoreBtn').addEventListener('click', restoreNote);
+        document.getElementById('deleteForeverBtn').addEventListener('click', deleteForever);
+        document.getElementById('historyBtn').addEventListener('click', showHistory);
+        document.getElementById('closeHistoryBtn').addEventListener('click', closeHistory);
+        document.getElementById('historyModalBackdrop').addEventListener('click', closeHistory);
 
         // Register Service Worker for PWA
         if ('serviceWorker' in navigator) {

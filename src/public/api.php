@@ -76,12 +76,19 @@ if ($action === 'get_notes' && $method === 'GET') {
     $limit = isset($_GET['limit']) ? (int)$_GET['limit'] : 20;
     $q = isset($_GET['q']) ? trim($_GET['q']) : '';
     $notebookId = isset($_GET['notebook_id']) && $_GET['notebook_id'] !== '' ? (int)$_GET['notebook_id'] : null;
+    $trash = isset($_GET['trash']) && $_GET['trash'] === '1';
     $offset = ($page - 1) * $limit;
 
-    $sql = "SELECT id, title, updated_at, summary as preview, is_pinned FROM z_article WHERE user_id = ?";
+    $sql = "SELECT id, title, updated_at, summary as preview, is_pinned, is_deleted, deleted_at FROM z_article WHERE user_id = ?";
     $params = [$user_id];
 
-    if ($notebookId !== null) {
+    if ($trash) {
+        $sql .= " AND is_deleted = 1";
+    } else {
+        $sql .= " AND is_deleted = 0";
+    }
+
+    if ($notebookId !== null && !$trash) {
         $sql .= " AND notebook_id = ?";
         $params[] = $notebookId;
     }
@@ -190,6 +197,15 @@ if ($action === 'save_note' && $method === 'POST') {
     $summary = $plainText;
 
     if ($id) {
+        // History Logic: Save current version if changed
+        $stmtCurr = $pdo->prepare("SELECT title, content, summary FROM z_article WHERE id = ? AND user_id = ?");
+        $stmtCurr->execute([$id, $user_id]);
+        $curr = $stmtCurr->fetch();
+        if ($curr && ($curr['content'] !== $replacedContent || $curr['title'] !== $title)) {
+             $stmtHist = $pdo->prepare("INSERT INTO z_article_history (article_id, user_id, title, content, summary) VALUES (?, ?, ?, ?, ?)");
+             $stmtHist->execute([$id, $user_id, $curr['title'], $curr['content'], $curr['summary']]);
+        }
+
         // Update note with replaced content
         $stmt = $pdo->prepare("UPDATE z_article SET title = ?, content = ?, summary = ?, notebook_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?");
         $stmt->execute([$title, $replacedContent, $summary, $notebookId, $id, $user_id]);
@@ -246,6 +262,21 @@ if ($action === 'create_notebook' && $method === 'POST') {
     exit;
 }
 
+if ($action === 'delete_notebook' && $method === 'POST') {
+    $id = $input['id'] ?? 0;
+    
+    // First, set notebook_id to NULL for all notes in this notebook
+    $stmt = $pdo->prepare("UPDATE z_article SET notebook_id = NULL WHERE notebook_id = ? AND user_id = ?");
+    $stmt->execute([$id, $user_id]);
+    
+    // Then delete the notebook
+    $stmt = $pdo->prepare("DELETE FROM z_notebook WHERE id = ? AND user_id = ?");
+    $stmt->execute([$id, $user_id]);
+    
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 if ($action === 'set_note_notebook' && $method === 'POST') {
     $id = $input['id'] ?? 0;
     $notebookId = array_key_exists('notebook_id', $input) && $input['notebook_id'] !== '' ? (int)$input['notebook_id'] : null;
@@ -257,9 +288,51 @@ if ($action === 'set_note_notebook' && $method === 'POST') {
 
 if ($action === 'delete_note' && $method === 'POST') {
     $id = $input['id'] ?? 0;
-    $stmt = $pdo->prepare("DELETE FROM z_article WHERE id = ? AND user_id = ?");
+    $force = $input['force'] ?? false;
+    
+    if ($force) {
+        // Delete history first to avoid foreign key constraints issues
+        $stmt = $pdo->prepare("DELETE FROM z_article_history WHERE article_id = ? AND user_id = ?");
+        $stmt->execute([$id, $user_id]);
+        
+        $stmt = $pdo->prepare("DELETE FROM z_article WHERE id = ? AND user_id = ?");
+        $stmt->execute([$id, $user_id]);
+    } else {
+        $stmt = $pdo->prepare("UPDATE z_article SET is_deleted = 1, deleted_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?");
+        $stmt->execute([$id, $user_id]);
+    }
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'restore_note' && $method === 'POST') {
+    $id = $input['id'] ?? 0;
+    $stmt = $pdo->prepare("UPDATE z_article SET is_deleted = 0, deleted_at = NULL WHERE id = ? AND user_id = ?");
     $stmt->execute([$id, $user_id]);
     echo json_encode(['success' => true]);
+    exit;
+}
+
+if ($action === 'get_history' && $method === 'GET') {
+    $id = $_GET['id'] ?? 0;
+    $stmt = $pdo->prepare("SELECT id, created_at, title, summary, length(content) as size FROM z_article_history WHERE article_id = ? AND user_id = ? ORDER BY created_at DESC");
+    $stmt->execute([$id, $user_id]);
+    $history = $stmt->fetchAll();
+    echo json_encode(['history' => $history]);
+    exit;
+}
+
+if ($action === 'get_history_detail' && $method === 'GET') {
+    $historyId = $_GET['history_id'] ?? 0;
+    $stmt = $pdo->prepare("SELECT * FROM z_article_history WHERE id = ? AND user_id = ?");
+    $stmt->execute([$historyId, $user_id]);
+    $item = $stmt->fetch();
+    if ($item) {
+        echo json_encode(['history' => $item]);
+    } else {
+        http_response_code(404);
+        echo json_encode(['error' => 'History not found']);
+    }
     exit;
 }
 
