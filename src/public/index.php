@@ -1164,13 +1164,20 @@ if (!isset($_SESSION['user_id'])) {
 
             saveStatusEl.textContent = uiTexts[currentLang].saving;
             await ensureImageIdsAndCache();
+
+            // Fix: Remove Quill 2.0 syntax highlighter UI artifacts (.ql-ui) before saving
+            // This prevents the language list ("PlainBashC++...") from being saved into the note content
+            const clone = quill.root.cloneNode(true);
+            clone.querySelectorAll('.ql-ui').forEach(el => el.remove());
+            const cleanContent = clone.innerHTML;
+
             const res = await fetch('api.php?action=save_note', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id: currentNoteId,
                     title: noteTitleEl.value || 'Untitled',
-                    content: quill.root.innerHTML,
+                    content: cleanContent,
                     notebook_id: currentNoteNotebookId ?? null
                 })
             });
