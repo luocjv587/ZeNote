@@ -79,15 +79,20 @@ if ($action === 'get_notes' && $method === 'GET') {
     $q = isset($_GET['q']) ? trim($_GET['q']) : '';
     $notebookId = isset($_GET['notebook_id']) && $_GET['notebook_id'] !== '' ? (int)$_GET['notebook_id'] : null;
     $trash = isset($_GET['trash']) && $_GET['trash'] === '1';
+    $favorites = isset($_GET['favorites']) && $_GET['favorites'] === '1';
     $offset = ($page - 1) * $limit;
 
-    $sql = "SELECT id, title, updated_at, summary as preview, is_pinned, is_deleted, deleted_at FROM z_article WHERE user_id = ?";
+    $sql = "SELECT id, title, updated_at, summary as preview, is_pinned, is_deleted, deleted_at, is_favorite FROM z_article WHERE user_id = ?";
     $params = [$user_id];
 
     if ($trash) {
         $sql .= " AND is_deleted = 1";
     } else {
         $sql .= " AND is_deleted = 0";
+    }
+
+    if ($favorites && !$trash) {
+        $sql .= " AND is_favorite = 1";
     }
 
     if ($notebookId !== null && !$trash) {
@@ -113,6 +118,17 @@ if ($action === 'get_notes' && $method === 'GET') {
     exit;
 }
 
+if ($action === 'toggle_favorite' && $method === 'POST') {
+    $id = $input['id'] ?? 0;
+    $isFavorite = isset($input['is_favorite']) ? (int)$input['is_favorite'] : 0;
+    
+    $stmt = $pdo->prepare("UPDATE z_article SET is_favorite = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?");
+    $stmt->execute([$isFavorite, $id, $user_id]);
+    
+    echo json_encode(['success' => true, 'is_favorite' => $isFavorite]);
+    exit;
+}
+
 if ($action === 'get_image' && $method === 'GET') {
     $imageId = isset($_GET['image_id']) ? trim($_GET['image_id']) : '';
     if (!$imageId) {
@@ -134,7 +150,7 @@ if ($action === 'get_image' && $method === 'GET') {
 
 if ($action === 'get_note' && $method === 'GET') {
     $id = $_GET['id'] ?? 0;
-    $stmt = $pdo->prepare("SELECT id, title, updated_at, summary, is_pinned, content, notebook_id FROM z_article WHERE id = ? AND user_id = ?");
+    $stmt = $pdo->prepare("SELECT id, title, updated_at, summary, is_pinned, content, notebook_id, is_favorite FROM z_article WHERE id = ? AND user_id = ?");
     $stmt->execute([$id, $user_id]);
     $note = $stmt->fetch();
     if ($note) {
@@ -161,7 +177,7 @@ if ($action === 'get_note_content' && $method === 'GET') {
 }
 if ($action === 'save_note' && $method === 'POST') {
     $id = $input['id'] ?? null;
-    $title = $input['title'] ?? 'Untitled';
+    $title = $input['title'] ?? '';
     $content = $input['content'] ?? '';
     $notebookId = array_key_exists('notebook_id', $input) && $input['notebook_id'] !== '' ? (int)$input['notebook_id'] : null;
 

@@ -17,6 +17,7 @@ try {
             title TEXT NOT NULL,
             content TEXT,
             notebook_id INTEGER NULL,
+            is_favorite INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES z_user(id)

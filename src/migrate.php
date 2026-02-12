@@ -5,7 +5,8 @@ try {
     // 1. Add columns to z_article if they don't exist
     $columns = [
         'is_deleted' => 'INTEGER DEFAULT 0',
-        'deleted_at' => 'DATETIME DEFAULT NULL'
+        'deleted_at' => 'DATETIME DEFAULT NULL',
+        'is_favorite' => 'INTEGER DEFAULT 0'
     ];
 
     foreach ($columns as $col => $def) {

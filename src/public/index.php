@@ -170,7 +170,10 @@ if (!isset($_SESSION['user_id'])) {
                 </div>
             </div>
             <div class="mt-2 flex items-center space-x-2">
-                <select id="notebookFilter" class="w-full md:w-auto md:max-w-[200px] flex-1 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-200 focus:ring-0 focus:border-gray-300 dark:focus:border-gray-600 truncate"></select>
+                <button id="notebookSelectorBtn" class="w-full md:w-auto md:max-w-[200px] flex-1 flex justify-between items-center text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95 shadow-sm group">
+                    <span id="notebookSelectorLabel" class="truncate font-medium">All Notes</span>
+                    <svg class="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
                 <button id="newNotebookBtn" title="Manage" class="px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center space-x-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M3 7.5A2.5 2.5 0 015.5 5h4l2 2H19a2 2 0 012 2v6.5A2.5 2.5 0 0118.5 18h-13A2.5 2.5 0 013 15.5v-8z"/>
@@ -179,6 +182,38 @@ if (!isset($_SESSION['user_id'])) {
                     <span id="newNotebookBtnLabel" class="text-xs">管理</span>
                 </button>
             </div>
+
+            <!-- Notebook Selection Modal (Apple Style) -->
+            <div id="notebookSelectorModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+                <div id="notebookSelectorBackdrop" class="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity"></div>
+                <div class="relative w-full max-w-[320px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100 flex flex-col max-h-[70vh]">
+                    <div class="px-4 py-3 border-b border-gray-100/50 dark:border-gray-800/50 flex justify-between items-center">
+                        <h3 id="notebookSelectorTitle" class="text-sm font-semibold text-gray-900 dark:text-gray-100">Select Notebook</h3>
+                        <button id="closeNotebookSelectorBtn" class="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+                    <div id="notebookSelectorList" class="overflow-y-auto p-2 space-y-1">
+                        <!-- Items injected here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Confirm Modal -->
+            <div id="confirmModal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4">
+                <div id="confirmModalBackdrop" class="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity"></div>
+                <div class="relative w-full max-w-[320px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100 flex flex-col">
+                    <div class="p-6 text-center">
+                        <h3 id="confirmModalTitle" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2"></h3>
+                        <p id="confirmModalMessage" class="text-sm text-gray-500 dark:text-gray-400 mb-6"></p>
+                        <div class="flex space-x-3 justify-center">
+                            <button id="confirmCancelBtn" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-1">Cancel</button>
+                            <button id="confirmOkBtn" class="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30 flex-1">OK</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Global Search -->
             <div class="relative">
                 <input type="text" id="globalSearch" placeholder="Search" 
@@ -211,7 +246,16 @@ if (!isset($_SESSION['user_id'])) {
             
             <div class="flex items-center space-x-2 md:space-x-4 shrink-0">
                 <span id="saveStatus" class="text-xs text-gray-400 dark:text-gray-500"></span>
-                <select id="noteNotebookSelect" class="text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-200 focus:ring-0 focus:border-gray-300 dark:focus:border-gray-600 max-w-[180px] truncate"></select>
+                <button id="favoriteBtn" class="p-2 text-gray-400 hover:text-yellow-500 transition-colors hidden" title="Favorite">
+                    <svg id="favoriteIcon" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                    </svg>
+                </button>
+                <button id="noteNotebookBtn" class="flex items-center space-x-1 text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all active:scale-95 shadow-sm group hidden max-w-[180px]">
+                    <span id="noteNotebookLabel" class="truncate font-medium">No Notebook</span>
+                    <svg class="w-3 h-3 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+                </button>
+                <select id="noteNotebookSelect" class="hidden text-sm bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-full px-3 py-1.5 text-gray-700 dark:text-gray-200 focus:ring-0 focus:border-gray-300 dark:focus:border-gray-600 max-w-[180px] truncate"></select>
                 
                 <!-- History Button -->
                 <button id="historyBtn" class="p-2 text-gray-400 hover:text-black dark:hover:text-white transition-colors hidden" title="History">
@@ -313,6 +357,7 @@ if (!isset($_SESSION['user_id'])) {
     <script>
         let currentNoteId = null;
         let isTrashMode = false;
+        let isFavoriteMode = false;
         // Register Table Module
         if (typeof QuillTableBetter !== 'undefined') {
             Quill.register({
@@ -566,7 +611,10 @@ if (!isset($_SESSION['user_id'])) {
                 noHistory: '无历史记录',
                 noSummary: '无摘要',
                 moveToTrash: '移至废纸篓',
-                deleteNotebookConfirm: '确定删除此笔记本吗？其中的笔记将被移出该笔记本。'
+                deleteNotebookConfirm: '确定删除此笔记本吗？其中的笔记将被移出该笔记本。',
+                favorites: '⭐ 收藏夹',
+                confirmTitle: '确认',
+                delete: '删除'
             },
             en: {
                 searchPlaceholder: 'Search',
@@ -594,7 +642,10 @@ if (!isset($_SESSION['user_id'])) {
                 noHistory: 'No history available',
                 noSummary: 'No summary',
                 moveToTrash: 'Move to Trash',
-                deleteNotebookConfirm: 'Delete this notebook? Notes inside will be moved out.'
+                deleteNotebookConfirm: 'Delete this notebook? Notes inside will be moved out.',
+                favorites: '⭐ Favorites',
+                confirmTitle: 'Confirm',
+                delete: 'Delete'
             }
         };
 
@@ -807,16 +858,45 @@ if (!isset($_SESSION['user_id'])) {
 
         function renderNotebookOptions() {
             const t = uiTexts[currentLang];
-            if (notebookFilterEl) {
-                const trashSelected = isTrashMode ? 'selected' : '';
-                const allSelected = (selectedNotebookId === null && !isTrashMode) ? 'selected' : '';
-                
-                const opts = [
-                    `<option value="" ${allSelected}>${t.notebookAll}</option>`,
-                    `<option value="trash" ${trashSelected}>${t.trashBin}</option>`
-                ].concat(notebooks.map(n => `<option value="${n.id}" ${selectedNotebookId == n.id ? 'selected' : ''}>${n.name}</option>`));
-                notebookFilterEl.innerHTML = opts.join('');
+            // Update custom selector label (Sidebar)
+            const labelEl = document.getElementById('notebookSelectorLabel');
+            if (labelEl) {
+                if (isTrashMode) labelEl.innerHTML = t.trashBin;
+                else if (isFavoriteMode) labelEl.innerHTML = t.favorites;
+                else if (selectedNotebookId) {
+                    const nb = notebooks.find(n => n.id == selectedNotebookId);
+                    labelEl.textContent = nb ? nb.name : t.notebookAll;
+                } else {
+                    labelEl.textContent = t.notebookAll;
+                }
             }
+
+            // Update Article Page Notebook Selector Button
+            const noteNotebookBtn = document.getElementById('noteNotebookBtn');
+            const noteNotebookLabel = document.getElementById('noteNotebookLabel');
+            
+            if (isTrashMode) {
+                // In trash mode, hide notebook selector
+                if (noteNotebookBtn) noteNotebookBtn.classList.add('hidden');
+            } else {
+                if (noteNotebookBtn) {
+                    noteNotebookBtn.classList.remove('hidden');
+                    
+                    // Update label
+                    if (currentNoteNotebookId) {
+                        const nb = notebooks.find(n => n.id == currentNoteNotebookId);
+                        if (nb) {
+                            if (noteNotebookLabel) noteNotebookLabel.textContent = nb.name;
+                        } else {
+                            if (noteNotebookLabel) noteNotebookLabel.textContent = t.notebookNone;
+                        }
+                    } else {
+                        if (noteNotebookLabel) noteNotebookLabel.textContent = t.notebookNone;
+                    }
+                }
+            }
+
+            // Keep note notebook select logic for compatibility if needed (hidden)
             if (noteNotebookSelectEl) {
                 const opts2 = [
                     `<option value="0" ${currentNoteNotebookId === null ? 'selected' : ''}>${t.notebookNone}</option>`
@@ -842,29 +922,29 @@ if (!isset($_SESSION['user_id'])) {
             `).join('');
         }
 
-        window.deleteNotebook = async function(id) {
-            if (!confirm(uiTexts[currentLang].deleteNotebookConfirm)) return;
-            
-            const res = await fetch('api.php?action=delete_notebook', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id })
-            });
-            
-            if (res.ok) {
-                await fetchNotebooks();
-                renderNotebookManagementList();
+        window.deleteNotebook = function(id) {
+            showConfirm(uiTexts[currentLang].deleteNotebookConfirm, async () => {
+                const res = await fetch('api.php?action=delete_notebook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
                 
-                if (currentNoteNotebookId == id) {
-                    currentNoteNotebookId = null;
-                    renderNotebookOptions();
+                if (res.ok) {
+                    await fetchNotebooks();
+                    renderNotebookManagementList();
+                    
+                    if (currentNoteNotebookId == id) {
+                        currentNoteNotebookId = null;
+                        renderNotebookOptions();
+                    }
+                    
+                    if (selectedNotebookId == id) {
+                        selectedNotebookId = null;
+                        fetchNotes(true);
+                    }
                 }
-                
-                if (selectedNotebookId == id) {
-                    selectedNotebookId = null;
-                    fetchNotes(true);
-                }
-            }
+            }, { type: 'destructive' });
         };
 
         function openNotebookModal() {
@@ -927,18 +1007,185 @@ if (!isset($_SESSION['user_id'])) {
             });
         }
 
-        if (notebookFilterEl) {
-            notebookFilterEl.addEventListener('change', () => {
-                const val = notebookFilterEl.value;
+        const notebookSelectorBtn = document.getElementById('notebookSelectorBtn');
+        const noteNotebookBtn = document.getElementById('noteNotebookBtn');
+        const notebookSelectorModal = document.getElementById('notebookSelectorModal');
+        const notebookSelectorBackdrop = document.getElementById('notebookSelectorBackdrop');
+        const closeNotebookSelectorBtn = document.getElementById('closeNotebookSelectorBtn');
+        const notebookSelectorList = document.getElementById('notebookSelectorList');
+
+        // 'filter' or 'assign'
+        let notebookSelectorMode = 'filter';
+
+        function openNotebookSelector(mode = 'filter') {
+            if (!notebookSelectorModal) return;
+            notebookSelectorMode = mode;
+            renderNotebookSelectorList();
+            notebookSelectorModal.classList.remove('hidden');
+            notebookSelectorModal.classList.add('flex');
+            // Animate in
+            setTimeout(() => {
+                notebookSelectorModal.querySelector('div.relative').classList.remove('scale-95', 'opacity-0');
+                notebookSelectorModal.querySelector('div.relative').classList.add('scale-100', 'opacity-100');
+                notebookSelectorBackdrop.classList.remove('opacity-0');
+            }, 10);
+        }
+
+        function closeNotebookSelector() {
+            if (!notebookSelectorModal) return;
+            // Animate out
+            notebookSelectorModal.querySelector('div.relative').classList.remove('scale-100', 'opacity-100');
+            notebookSelectorModal.querySelector('div.relative').classList.add('scale-95', 'opacity-0');
+            notebookSelectorBackdrop.classList.add('opacity-0');
+            setTimeout(() => {
+                notebookSelectorModal.classList.add('hidden');
+                notebookSelectorModal.classList.remove('flex');
+            }, 200);
+        }
+
+        async function selectNotebook(val) {
+            if (notebookSelectorMode === 'filter') {
                 if (val === 'trash') {
                     isTrashMode = true;
+                    isFavoriteMode = false;
+                    selectedNotebookId = null;
+                } else if (val === 'favorites') {
+                    isTrashMode = false;
+                    isFavoriteMode = true;
                     selectedNotebookId = null;
                 } else {
                     isTrashMode = false;
+                    isFavoriteMode = false;
                     selectedNotebookId = val ? parseInt(val) : null;
                 }
                 fetchNotes(true);
-            });
+                renderNotebookOptions(); // Update label
+            } else if (notebookSelectorMode === 'assign') {
+                const nbId = val ? parseInt(val) : null;
+                if (currentNoteId) {
+                    currentNoteNotebookId = nbId;
+                    await fetch('api.php?action=set_note_notebook', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: currentNoteId, notebook_id: nbId })
+                    });
+                    renderNotebookOptions(); // Update assign button label
+                    fetchNotes(true); // Update list to reflect changes (maybe remove from current view if filtered)
+                }
+            }
+            closeNotebookSelector();
+        }
+
+        function renderNotebookSelectorList() {
+            const t = uiTexts[currentLang];
+            if (!notebookSelectorList) return;
+
+            let html = '';
+
+            if (notebookSelectorMode === 'filter') {
+                const isAll = selectedNotebookId === null && !isTrashMode && !isFavoriteMode;
+                html += `
+                    <button onclick="selectNotebook('')" class="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group ${isAll ? 'bg-gray-100 dark:bg-gray-800' : ''}">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">${t.notebookAll}</span>
+                        </div>
+                        ${isAll ? '<svg class="w-4 h-4 text-black dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                    </button>
+                    <button onclick="selectNotebook('favorites')" class="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group ${isFavoriteMode ? 'bg-gray-100 dark:bg-gray-800' : ''}">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-1.5 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-600 dark:text-yellow-500">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">${t.favorites}</span>
+                        </div>
+                        ${isFavoriteMode ? '<svg class="w-4 h-4 text-black dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                    </button>
+                `;
+
+                if (notebooks.length > 0) {
+                    html += `<div class="my-2 border-t border-gray-100 dark:border-gray-800"></div>
+                            <div class="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Notebooks</div>`;
+                    
+                    html += notebooks.map(n => {
+                        const isSelected = selectedNotebookId == n.id;
+                        return `
+                        <button onclick="selectNotebook('${n.id}')" class="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group ${isSelected ? 'bg-gray-100 dark:bg-gray-800' : ''}">
+                            <div class="flex items-center space-x-3">
+                                <div class="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate max-w-[180px]">${n.name}</span>
+                            </div>
+                            ${isSelected ? '<svg class="w-4 h-4 text-black dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                        </button>
+                        `;
+                    }).join('');
+                }
+
+                html += `
+                    <div class="my-2 border-t border-gray-100 dark:border-gray-800"></div>
+                    <button onclick="selectNotebook('trash')" class="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group ${isTrashMode ? 'bg-gray-100 dark:bg-gray-800' : ''}">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-1.5 bg-red-50 dark:bg-red-900/20 rounded-lg text-red-500">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">${t.trashBin}</span>
+                        </div>
+                        ${isTrashMode ? '<svg class="w-4 h-4 text-black dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                    </button>
+                `;
+            } else if (notebookSelectorMode === 'assign') {
+                const isNone = currentNoteNotebookId === null;
+                html += `
+                    <button onclick="selectNotebook('')" class="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group ${isNone ? 'bg-gray-100 dark:bg-gray-800' : ''}">
+                        <div class="flex items-center space-x-3">
+                            <div class="p-1.5 bg-gray-200 dark:bg-gray-700 rounded-lg text-gray-600 dark:text-gray-300">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                            </div>
+                            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">${t.notebookNone}</span>
+                        </div>
+                        ${isNone ? '<svg class="w-4 h-4 text-black dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                    </button>
+                `;
+
+                if (notebooks.length > 0) {
+                    html += `<div class="my-2 border-t border-gray-100 dark:border-gray-800"></div>
+                            <div class="px-3 py-1 text-xs font-semibold text-gray-400 uppercase tracking-wider">Notebooks</div>`;
+                    
+                    html += notebooks.map(n => {
+                        const isSelected = currentNoteNotebookId == n.id;
+                        return `
+                        <button onclick="selectNotebook('${n.id}')" class="w-full text-left px-3 py-2.5 rounded-xl flex items-center justify-between hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group ${isSelected ? 'bg-gray-100 dark:bg-gray-800' : ''}">
+                            <div class="flex items-center space-x-3">
+                                <div class="p-1.5 bg-blue-50 dark:bg-blue-900/20 rounded-lg text-blue-500">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path></svg>
+                                </div>
+                                <span class="text-sm font-medium text-gray-700 dark:text-gray-200 truncate max-w-[180px]">${n.name}</span>
+                            </div>
+                            ${isSelected ? '<svg class="w-4 h-4 text-black dark:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>' : ''}
+                        </button>
+                        `;
+                    }).join('');
+                }
+            }
+
+            notebookSelectorList.innerHTML = html;
+        }
+
+        if (notebookSelectorBtn) {
+            notebookSelectorBtn.addEventListener('click', () => openNotebookSelector('filter'));
+        }
+        if (noteNotebookBtn) {
+            noteNotebookBtn.addEventListener('click', () => openNotebookSelector('assign'));
+        }
+        if (closeNotebookSelectorBtn) {
+            closeNotebookSelectorBtn.addEventListener('click', closeNotebookSelector);
+        }
+        if (notebookSelectorBackdrop) {
+            notebookSelectorBackdrop.addEventListener('click', closeNotebookSelector);
         }
 
         if (noteNotebookSelectEl) {
@@ -954,6 +1201,69 @@ if (!isset($_SESSION['user_id'])) {
                 fetchNotes(true);
             });
         }
+
+        // Confirm Modal Logic
+        const confirmModal = document.getElementById('confirmModal');
+        const confirmModalBackdrop = document.getElementById('confirmModalBackdrop');
+        const confirmModalTitle = document.getElementById('confirmModalTitle');
+        const confirmModalMessage = document.getElementById('confirmModalMessage');
+        const confirmCancelBtn = document.getElementById('confirmCancelBtn');
+        const confirmOkBtn = document.getElementById('confirmOkBtn');
+        let onConfirmCallback = null;
+
+        function showConfirm(message, callback, options = {}) {
+            if (!confirmModal) return;
+            
+            // Set content
+            confirmModalMessage.textContent = message;
+            confirmModalTitle.textContent = options.title || uiTexts[currentLang].confirmTitle || 'Confirm';
+            
+            // Style button based on type (destructive vs normal)
+            if (options.type === 'destructive') {
+                confirmOkBtn.classList.remove('bg-blue-500', 'hover:bg-blue-600', 'shadow-blue-500/30');
+                confirmOkBtn.classList.add('bg-red-500', 'hover:bg-red-600', 'shadow-red-500/30');
+                confirmOkBtn.textContent = options.confirmText || uiTexts[currentLang].delete || 'Delete';
+            } else {
+                confirmOkBtn.classList.remove('bg-red-500', 'hover:bg-red-600', 'shadow-red-500/30');
+                confirmOkBtn.classList.add('bg-blue-500', 'hover:bg-blue-600', 'shadow-blue-500/30');
+                confirmOkBtn.textContent = options.confirmText || 'OK';
+            }
+            
+            confirmCancelBtn.textContent = uiTexts[currentLang].notebookCancel || 'Cancel';
+
+            onConfirmCallback = callback;
+            
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+            
+            // Animate in
+            setTimeout(() => {
+                confirmModal.querySelector('div.relative').classList.remove('scale-95', 'opacity-0');
+                confirmModal.querySelector('div.relative').classList.add('scale-100', 'opacity-100');
+                confirmModalBackdrop.classList.remove('opacity-0');
+            }, 10);
+        }
+
+        function closeConfirmModal() {
+            if (!confirmModal) return;
+            
+            confirmModal.querySelector('div.relative').classList.remove('scale-100', 'opacity-100');
+            confirmModal.querySelector('div.relative').classList.add('scale-95', 'opacity-0');
+            confirmModalBackdrop.classList.add('opacity-0');
+            
+            setTimeout(() => {
+                confirmModal.classList.add('hidden');
+                confirmModal.classList.remove('flex');
+                onConfirmCallback = null;
+            }, 200);
+        }
+
+        if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', closeConfirmModal);
+        if (confirmModalBackdrop) confirmModalBackdrop.addEventListener('click', closeConfirmModal);
+        if (confirmOkBtn) confirmOkBtn.addEventListener('click', () => {
+            if (onConfirmCallback) onConfirmCallback();
+            closeConfirmModal();
+        });
 
         // Mobile UI Helpers
         function showEditor() {
@@ -1197,6 +1507,8 @@ if (!isset($_SESSION['user_id'])) {
                 let url = `api.php?action=get_notes&page=${page}&limit=20&q=${encodeURIComponent(query)}`;
                 if (isTrashMode) {
                     url += '&trash=1';
+                } else if (isFavoriteMode) {
+                    url += '&favorites=1';
                 } else if (selectedNotebookId !== null) {
                     url += `&notebook_id=${selectedNotebookId}`;
                 }
@@ -1238,8 +1550,11 @@ if (!isset($_SESSION['user_id'])) {
             const html = notes.map(note => `
                 <div id="note-item-${note.id}" onclick="loadNote(${note.id})" class="note-item p-4 rounded-xl cursor-pointer transition-all group border relative ${currentNoteId == note.id ? 'bg-white dark:bg-gray-800 shadow-sm border-gray-100 dark:border-gray-700' : 'border-transparent hover:bg-gray-100/50 dark:hover:bg-gray-800/50'}">
                     <div class="flex justify-between items-start">
-                        <h3 class="font-semibold text-sm mb-1 truncate flex-1 dark:text-gray-200">${note.title || 'Untitled'}</h3>
-                        ${note.is_pinned ? '<svg class="w-3 h-3 text-yellow-500 ml-2 shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4H17V2H7V4H8V12L6 14V16H11V22H13V16H18V14L16 12Z" /></svg>' : ''}
+                        <h3 class="font-semibold text-sm mb-1 truncate flex-1 dark:text-gray-200 ${!note.title ? 'text-gray-400 dark:text-gray-500 italic' : ''}">${note.title || note.preview || uiTexts[currentLang].newNote}</h3>
+                        <div class="flex items-center space-x-1 ml-2 shrink-0">
+                            ${note.is_favorite == 1 ? '<svg class="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path></svg>' : ''}
+                            ${note.is_pinned ? '<svg class="w-3 h-3 text-yellow-500" fill="currentColor" viewBox="0 0 24 24"><path d="M16 12V4H17V2H7V4H8V12L6 14V16H11V22H13V16H18V14L16 12Z" /></svg>' : ''}
+                        </div>
                     </div>
                     <p class="text-xs text-gray-400 dark:text-gray-500 truncate">${note.preview || 'No content'}</p>
                     <div class="flex justify-between items-center mt-2">
@@ -1310,16 +1625,30 @@ if (!isset($_SESSION['user_id'])) {
                 currentNoteNotebookId = data.note.notebook_id || null;
                 renderNotebookOptions();
 
+                const favoriteIcon = document.querySelector('#favoriteIcon path');
+                const favoriteBtn = document.getElementById('favoriteBtn');
+                if (data.note.is_favorite == 1) {
+                    favoriteBtn.classList.add('text-yellow-500');
+                    favoriteBtn.classList.remove('text-gray-400');
+                    favoriteIcon.setAttribute('fill', 'currentColor');
+                } else {
+                    favoriteBtn.classList.remove('text-yellow-500');
+                    favoriteBtn.classList.add('text-gray-400');
+                    favoriteIcon.setAttribute('fill', 'none');
+                }
+
                 if (isTrashMode) {
                     quill.enable(false);
                     noteTitleEl.disabled = true;
                     document.getElementById('restoreBtn').classList.remove('hidden');
                     document.getElementById('deleteForeverBtn').classList.remove('hidden');
+                    favoriteBtn.classList.add('hidden');
                 } else {
                     quill.enable(true);
                     noteTitleEl.disabled = false;
                     document.getElementById('deleteBtn').classList.remove('hidden');
                     document.getElementById('historyBtn').classList.remove('hidden');
+                    favoriteBtn.classList.remove('hidden');
                 }
                 
                 showEditor(); 
@@ -1348,10 +1677,42 @@ if (!isset($_SESSION['user_id'])) {
             noteTimeEl.classList.add('hidden');
             quill.setContents([]);
             deleteBtn.classList.add('hidden');
+            document.getElementById('favoriteBtn').classList.add('hidden');
             showEditor(); // Switch to editor view on mobile
             noteTitleEl.focus();
             currentNoteNotebookId = selectedNotebookId;
             renderNotebookOptions();
+        }
+
+        async function toggleFavorite() {
+            if (!currentNoteId) return;
+            const favoriteBtn = document.getElementById('favoriteBtn');
+            const isFav = favoriteBtn.classList.contains('text-yellow-500');
+            const newStatus = isFav ? 0 : 1;
+            
+            const res = await fetch('api.php?action=toggle_favorite', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: currentNoteId, is_favorite: newStatus })
+            });
+            
+            if (res.ok) {
+                const favoriteIcon = document.querySelector('#favoriteIcon path');
+                if (newStatus) {
+                    favoriteBtn.classList.add('text-yellow-500');
+                    favoriteBtn.classList.remove('text-gray-400');
+                    favoriteIcon.setAttribute('fill', 'currentColor');
+                } else {
+                    favoriteBtn.classList.remove('text-yellow-500');
+                    favoriteBtn.classList.add('text-gray-400');
+                    favoriteIcon.setAttribute('fill', 'none');
+                }
+                
+                // Refresh list if in favorites mode to remove the item or update indicator if we add one
+                if (isFavoriteMode) {
+                    fetchNotes(true);
+                }
+            }
         }
 
         async function togglePin(id) {
@@ -1383,7 +1744,7 @@ if (!isset($_SESSION['user_id'])) {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     id: currentNoteId,
-                    title: noteTitleEl.value || 'Untitled',
+                    title: noteTitleEl.value,
                     content: cleanContent,
                     notebook_id: currentNoteNotebookId ?? null
                 })
@@ -1415,18 +1776,19 @@ if (!isset($_SESSION['user_id'])) {
             }
         }
 
-        async function deleteNote() {
-            if (!currentNoteId || !confirm(uiTexts[currentLang].deleteConfirm)) return;
-
-            const res = await fetch('api.php?action=delete_note', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: currentNoteId })
-            });
-            if (res.ok) {
-                createNewNote();
-                fetchNotes(true);
-            }
+        function deleteNote() {
+            if (!currentNoteId) return;
+            showConfirm(uiTexts[currentLang].deleteConfirm, async () => {
+                const res = await fetch('api.php?action=delete_note', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentNoteId })
+                });
+                if (res.ok) {
+                    createNewNote();
+                    fetchNotes(true);
+                }
+            }, { type: 'destructive' });
         }
 
         // Auto-save logic
@@ -1449,6 +1811,7 @@ if (!isset($_SESSION['user_id'])) {
 
         document.getElementById('newNoteBtn').addEventListener('click', createNewNote);
         document.getElementById('deleteBtn').addEventListener('click', deleteNote);
+        document.getElementById('favoriteBtn').addEventListener('click', toggleFavorite);
         
         // Handle back button click
         backBtn.addEventListener('click', () => {
@@ -1492,17 +1855,19 @@ if (!isset($_SESSION['user_id'])) {
             }
         }
 
-        async function deleteForever() {
-            if (!currentNoteId || !confirm(uiTexts[currentLang].deleteForeverConfirm)) return;
-            const res = await fetch('api.php?action=delete_note', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: currentNoteId, force: true })
-            });
-            if (res.ok) {
-                createNewNote();
-                fetchNotes(true);
-            }
+        function deleteForever() {
+            if (!currentNoteId) return;
+            showConfirm(uiTexts[currentLang].deleteForeverConfirm, async () => {
+                const res = await fetch('api.php?action=delete_note', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id: currentNoteId, force: true })
+                });
+                if (res.ok) {
+                    createNewNote();
+                    fetchNotes(true);
+                }
+            }, { type: 'destructive' });
         }
 
         async function showHistory() {
@@ -1534,24 +1899,19 @@ if (!isset($_SESSION['user_id'])) {
             document.getElementById('historyModal').classList.remove('flex');
         }
 
-        window.restoreVersion = async function(historyId) {
-            if (!confirm(uiTexts[currentLang].restoreVersionConfirm)) return;
-            
-            // First get the history detail
-            const res = await fetch(`api.php?action=get_history_detail&history_id=${historyId}`);
-            const data = await res.json();
-            
-            if (data.history) {
-                // Update current note content
-                noteTitleEl.value = data.history.title;
-                quill.setContents([]);
-                quill.clipboard.dangerouslyPasteHTML(0, data.history.content, 'api');
+        window.restoreVersion = function(historyId) {
+            showConfirm(uiTexts[currentLang].restoreVersionConfirm, async () => {
+                const res = await fetch(`api.php?action=get_history_detail&history_id=${historyId}`);
+                const data = await res.json();
                 
-                // Trigger save to persist this restoration as current version
-                await saveNote();
-                
-                closeHistory();
-            }
+                if (data.history) {
+                    noteTitleEl.value = data.history.title;
+                    quill.setContents([]);
+                    quill.clipboard.dangerouslyPasteHTML(0, data.history.content, 'api');
+                    await saveNote();
+                    closeHistory();
+                }
+            }, { confirmText: uiTexts[currentLang].restore });
         };
 
         document.getElementById('restoreBtn').addEventListener('click', restoreNote);
