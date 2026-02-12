@@ -48,6 +48,28 @@ if (!isset($_SESSION['user_id'])) {
         </div>
 
         <div class="mt-6 grid grid-cols-1 gap-4">
+            <!-- AI Settings -->
+            <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+                <h2 class="text-lg font-semibold">AI Configuration</h2>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">配置阿里云百炼 API Key 以使用 AI 功能</p>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">API Key</label>
+                        <input type="password" id="apiKeyInput" placeholder="sk-..." class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-black focus:border-black dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Model Name</label>
+                        <input type="text" id="modelNameInput" placeholder="qwen-plus" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-black focus:border-black dark:text-white">
+                    </div>
+                    <div class="flex justify-end">
+                        <button id="saveAiSettingsBtn" class="px-5 py-2 text-sm rounded-full bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity">
+                            保存配置
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
                 <div class="flex items-center justify-between">
                     <div>
@@ -99,6 +121,47 @@ if (!isset($_SESSION['user_id'])) {
         const confirmDownload = document.getElementById('confirmDownload');
         const exportStep1 = document.getElementById('exportStep1');
         const exportStep2 = document.getElementById('exportStep2');
+
+        const apiKeyInput = document.getElementById('apiKeyInput');
+        const modelNameInput = document.getElementById('modelNameInput');
+        const saveAiSettingsBtn = document.getElementById('saveAiSettingsBtn');
+
+        // Load Settings
+        fetch('api.php?action=get_settings')
+            .then(res => res.json())
+            .then(data => {
+                if(data.aliyun_api_key) apiKeyInput.value = data.aliyun_api_key;
+                if(data.aliyun_model_name) modelNameInput.value = data.aliyun_model_name;
+            });
+
+        // Save Settings
+        saveAiSettingsBtn.addEventListener('click', async () => {
+            const apiKey = apiKeyInput.value.trim();
+            const modelName = modelNameInput.value.trim();
+            
+            saveAiSettingsBtn.disabled = true;
+            saveAiSettingsBtn.textContent = 'Saving...';
+            
+            try {
+                const res = await fetch('api.php?action=save_settings', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({aliyun_api_key: apiKey, aliyun_model_name: modelName})
+                });
+                
+                if (res.ok) {
+                    alert('Settings saved successfully!');
+                } else {
+                    alert('Failed to save settings.');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Error saving settings.');
+            } finally {
+                saveAiSettingsBtn.disabled = false;
+                saveAiSettingsBtn.textContent = '保存配置';
+            }
+        });
         const backBtn = document.getElementById('backBtn');
         const homeBtn = document.getElementById('homeBtn');
 

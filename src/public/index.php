@@ -16,6 +16,53 @@ if (!isset($_SESSION['user_id'])) {
     <link rel="icon" type="image/svg+xml" href="logo.svg">
     <link rel="manifest" href="manifest.json">
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- AI Modal -->
+    <div id="aiModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+        <div id="aiModalBackdrop" class="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+        <div class="relative w-[90%] max-w-lg bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-6 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center">
+                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    AI Assistant
+                </h2>
+                <button id="closeAiModalBtn" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto space-y-4 pr-1">
+                <!-- Selected Context Preview -->
+                <div id="aiContextPreview" class="hidden">
+                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Selected Context</label>
+                    <div id="aiContextText" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 text-sm text-gray-600 dark:text-gray-400 border border-gray-100 dark:border-gray-700 italic max-h-32 overflow-y-auto">
+                        <!-- Content -->
+                    </div>
+                </div>
+
+                <!-- Prompt Input -->
+                <div>
+                    <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Instruction</label>
+                    <textarea id="aiPromptInput" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-3 text-sm focus:ring-black focus:border-black dark:text-white min-h-[100px]" placeholder="Ask AI to polish, translate, or summarize..."></textarea>
+                </div>
+                
+                <!-- Result Area -->
+                <div id="aiResultArea" class="hidden">
+                     <label class="block text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">AI Response</label>
+                     <div id="aiResponseText" class="bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm text-gray-800 dark:text-gray-200 border border-gray-100 dark:border-gray-700 whitespace-pre-wrap"></div>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-end space-x-3">
+                 <button id="aiInsertBtn" class="hidden px-4 py-2 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    Insert to Bottom
+                </button>
+                <button id="aiSubmitBtn" class="px-5 py-2 text-sm rounded-full bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity flex items-center justify-center">
+                    <span>Ask AI</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -38,6 +85,7 @@ if (!isset($_SESSION['user_id'])) {
     <script src="https://cdn.jsdelivr.net/npm/quilljs-markdown@1.2.0/dist/quilljs-markdown.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/json-bigint@1.0.0/dist/json-bigint.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script>
         // Override global fetch to handle session expiration (401)
         const { fetch: originalFetch } = window;
@@ -73,6 +121,24 @@ if (!isset($_SESSION['user_id'])) {
         
         .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
         .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+
+        /* AI Markdown Preview Styles */
+        #aiResponseText table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        #aiResponseText th, #aiResponseText td { border: 1px solid #e5e7eb; padding: 0.5em; text-align: left; }
+        #aiResponseText th { background-color: #f9fafb; font-weight: 600; }
+        .dark #aiResponseText th, .dark #aiResponseText td { border-color: #374151; }
+        .dark #aiResponseText th { background-color: #1f2937; }
+        #aiResponseText ul, #aiResponseText ol { margin: 1em 0; padding-left: 1.5em; list-style: disc; }
+        #aiResponseText ol { list-style: decimal; }
+        #aiResponseText h1, #aiResponseText h2, #aiResponseText h3 { font-weight: 600; margin: 1em 0 0.5em; }
+        #aiResponseText p { margin-bottom: 0.5em; }
+        #aiResponseText code { background-color: #f3f4f6; padding: 0.2em 0.4em; border-radius: 0.25rem; font-size: 0.9em; font-family: monospace; }
+        .dark #aiResponseText code { background-color: #374151; }
+        #aiResponseText pre { background-color: #f3f4f6; padding: 1em; border-radius: 0.5rem; overflow-x: auto; margin: 1em 0; }
+        .dark #aiResponseText pre { background-color: #1f2937; }
+        #aiResponseText pre code { background: none; padding: 0; }
+        #aiResponseText blockquote { border-left: 4px solid #e5e7eb; padding-left: 1em; color: #6b7280; margin: 1em 0; }
+        .dark #aiResponseText blockquote { border-color: #4b5563; color: #9ca3af; }
     </style>
 </head>
 <body class="bg-white dark:bg-gray-900 h-screen flex overflow-hidden text-gray-900 dark:text-gray-100 selection:bg-gray-200 dark:selection:bg-gray-700">
@@ -218,6 +284,10 @@ if (!isset($_SESSION['user_id'])) {
     <!-- Floating Action Button -->
     <div class="fixed bottom-6 right-6 z-50 group">
         <div id="fabMenu" class="absolute bottom-full right-0 mb-4 flex flex-col space-y-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0">
+            <button id="aiBtn" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 flex items-center justify-center whitespace-nowrap" title="AI Assistant">
+                <span class="mr-2 text-xs font-medium">AI</span>
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+            </button>
             <button id="formatJsonBtn" class="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 p-3 rounded-full shadow-lg hover:bg-gray-50 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-700 flex items-center justify-center whitespace-nowrap" title="Format JSON">
                 <span class="mr-2 text-xs font-medium">JSON</span>
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
@@ -1008,6 +1078,107 @@ if (!isset($_SESSION['user_id'])) {
             } catch (e) {
                 alert('Invalid JSON');
             }
+        });
+
+        // AI Logic
+        const aiBtn = document.getElementById('aiBtn');
+        const aiModal = document.getElementById('aiModal');
+        const aiModalBackdrop = document.getElementById('aiModalBackdrop');
+        const closeAiModalBtn = document.getElementById('closeAiModalBtn');
+        const aiContextPreview = document.getElementById('aiContextPreview');
+        const aiContextText = document.getElementById('aiContextText');
+        const aiPromptInput = document.getElementById('aiPromptInput');
+        const aiSubmitBtn = document.getElementById('aiSubmitBtn');
+        const aiResultArea = document.getElementById('aiResultArea');
+        const aiResponseText = document.getElementById('aiResponseText');
+        const aiInsertBtn = document.getElementById('aiInsertBtn');
+
+        let currentSelection = '';
+
+        function openAiModal() {
+            // Get selection
+            const range = quill.getSelection();
+            currentSelection = '';
+            if (range && range.length > 0) {
+                currentSelection = quill.getText(range.index, range.length);
+            }
+            
+            // Show/Hide context preview
+            if (currentSelection) {
+                aiContextPreview.classList.remove('hidden');
+                aiContextText.textContent = currentSelection;
+            } else {
+                aiContextPreview.classList.add('hidden');
+            }
+
+            // Reset state
+            aiPromptInput.value = '';
+            aiResultArea.classList.add('hidden');
+            aiInsertBtn.classList.add('hidden');
+            aiResponseText.innerHTML = '';
+            
+            aiModal.classList.remove('hidden');
+            aiModal.classList.add('flex');
+            aiPromptInput.focus();
+        }
+
+        function closeAiModal() {
+            aiModal.classList.add('hidden');
+            aiModal.classList.remove('flex');
+        }
+
+        aiBtn.addEventListener('click', openAiModal);
+        closeAiModalBtn.addEventListener('click', closeAiModal);
+        aiModalBackdrop.addEventListener('click', closeAiModal);
+
+        aiSubmitBtn.addEventListener('click', async () => {
+            const prompt = aiPromptInput.value.trim();
+            if (!prompt) return;
+
+            aiSubmitBtn.disabled = true;
+            aiSubmitBtn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white dark:text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Thinking...';
+
+            try {
+                const res = await fetch('ai_handler.php', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({
+                        prompt: prompt,
+                        context: currentSelection
+                    })
+                });
+                
+                const data = await res.json();
+                
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                } else {
+                    aiResultArea.classList.remove('hidden');
+                    aiResponseText.innerHTML = marked.parse(data.content);
+                    aiInsertBtn.classList.remove('hidden');
+                    // Scroll to result
+                    aiResultArea.scrollIntoView({behavior: 'smooth'});
+                }
+            } catch (e) {
+                console.error(e);
+                alert('Request failed');
+            } finally {
+                aiSubmitBtn.disabled = false;
+                aiSubmitBtn.innerHTML = '<span>Ask AI</span>';
+            }
+        });
+
+        aiInsertBtn.addEventListener('click', () => {
+             const html = aiResponseText.innerHTML;
+             if (html) {
+                 // Insert at bottom
+                 const length = quill.getLength();
+                 quill.insertText(length, '\n');
+                 quill.clipboard.dangerouslyPasteHTML(length + 1, html);
+                 quill.insertText(quill.getLength(), '\n');
+                 quill.setSelection(quill.getLength());
+                 closeAiModal();
+             }
         });
 
         // Fetch notes with pagination and search

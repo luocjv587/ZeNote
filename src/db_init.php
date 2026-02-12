@@ -7,6 +7,8 @@ try {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT NOT NULL UNIQUE,
             password TEXT NOT NULL,
+            aliyun_api_key TEXT,
+            aliyun_model_name TEXT DEFAULT 'qwen-plus',
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )",
         "CREATE TABLE IF NOT EXISTS z_article (

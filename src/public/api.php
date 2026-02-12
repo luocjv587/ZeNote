@@ -385,6 +385,28 @@ if ($action === 'download_db' && $method === 'GET') {
     exit;
 }
 
+if ($action === 'get_settings' && $method === 'GET') {
+    $stmt = $pdo->prepare("SELECT aliyun_api_key, aliyun_model_name FROM z_user WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
+    echo json_encode([
+        'aliyun_api_key' => $user['aliyun_api_key'] ?? '',
+        'aliyun_model_name' => $user['aliyun_model_name'] ?? 'qwen-plus'
+    ]);
+    exit;
+}
+
+if ($action === 'save_settings' && $method === 'POST') {
+    $apiKey = trim($input['aliyun_api_key'] ?? '');
+    $modelName = trim($input['aliyun_model_name'] ?? 'qwen-plus');
+    
+    $stmt = $pdo->prepare("UPDATE z_user SET aliyun_api_key = ?, aliyun_model_name = ? WHERE id = ?");
+    $stmt->execute([$apiKey, $modelName, $user_id]);
+    
+    echo json_encode(['success' => true]);
+    exit;
+}
+
 http_response_code(400);
 echo json_encode(['error' => 'Invalid action']);
 ?>

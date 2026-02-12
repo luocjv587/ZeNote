@@ -97,6 +97,14 @@ try {
         $pdo->exec("ALTER TABLE z_article ADD COLUMN deleted_at DATETIME DEFAULT NULL");
     }
 
+    // Migration: Add aliyun_api_key and aliyun_model_name to z_user
+    try {
+        $pdo->query("SELECT aliyun_api_key FROM z_user LIMIT 1");
+    } catch (PDOException $e) {
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN aliyun_api_key TEXT");
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN aliyun_model_name TEXT DEFAULT 'qwen-plus'");
+    }
+
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
 }
