@@ -1,4 +1,6 @@
 <?php
+ini_set('session.gc_maxlifetime', 604800);
+session_set_cookie_params(604800);
 session_start();
 if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
@@ -35,6 +37,19 @@ if (!isset($_SESSION['user_id'])) {
     <link href="https://cdn.jsdelivr.net/npm/quilljs-markdown@1.2.0/dist/quilljs-markdown-common-style.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/quilljs-markdown@1.2.0/dist/quilljs-markdown.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/json-bigint@1.0.0/dist/json-bigint.browser.min.js"></script>
+    <script>
+        // Override global fetch to handle session expiration (401)
+        const { fetch: originalFetch } = window;
+        window.fetch = async (...args) => {
+            const response = await originalFetch(...args);
+            if (response.status === 401) {
+                window.location.href = 'login.php';
+                return;
+            }
+            return response;
+        };
+    </script>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         .ql-toolbar.ql-snow { border: none; border-bottom: 1px solid #f3f4f6; }
@@ -960,8 +975,29 @@ if (!isset($_SESSION['user_id'])) {
                     length = range.length;
                 }
 
-                const jsonObj = JSON.parse(textToFormat);
-                const formatted = JSON.stringify(jsonObj, null, 4);
+                let parser;
+                if (window.JSONbig) {
+                    // JSONbig might be a factory function or an object depending on the build
+                    if (typeof window.JSONbig === 'function') {
+                        parser = window.JSONbig({ storeAsString: true });
+                    } else {
+                         // If it's an object, we can't configure it to storeAsString easily.
+                         // Fallback to native JSON but use regex to pre-quote big integers
+                         parser = null;
+                    }
+                }
+
+                if (!parser) {
+                    // Fallback: Regex to quote large integers to prevent precision loss/scientific notation
+                    // Matches: "key": 1234567890123456789 -> "key": "1234567890123456789"
+                    // Be careful not to match inside strings. 
+                    // This regex requires the number to be followed by , } or ] which is standard JSON structure
+                    textToFormat = textToFormat.replace(/:\s*(-?\d{16,})(?=\s*[,}\]])/g, ': "$1"');
+                    parser = JSON;
+                }
+
+                const jsonObj = parser.parse(textToFormat);
+                const formatted = parser.stringify(jsonObj, null, 4).replace(/ /g, '\u00A0');
                 
                 // Replace text with formatted code block
                 quill.deleteText(startIndex, length);
