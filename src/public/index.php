@@ -143,6 +143,37 @@ if (!isset($_SESSION['user_id'])) {
 </head>
 <body class="bg-white dark:bg-gray-900 h-screen flex overflow-hidden text-gray-900 dark:text-gray-100 selection:bg-gray-200 dark:selection:bg-gray-700">
 
+    <!-- Notebook Selection Modal (Apple Style) -->
+    <div id="notebookSelectorModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
+        <div id="notebookSelectorBackdrop" class="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity"></div>
+        <div class="relative w-full max-w-[320px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100 flex flex-col max-h-[70vh]">
+            <div class="px-4 py-3 border-b border-gray-100/50 dark:border-gray-800/50 flex justify-between items-center">
+                <h3 id="notebookSelectorTitle" class="text-sm font-semibold text-gray-900 dark:text-gray-100">Select Notebook</h3>
+                <button id="closeNotebookSelectorBtn" class="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
+                    <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div id="notebookSelectorList" class="overflow-y-auto p-2 space-y-1">
+                <!-- Items injected here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirmModal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4">
+        <div id="confirmModalBackdrop" class="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity"></div>
+        <div class="relative w-full max-w-[320px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100 flex flex-col">
+            <div class="p-6 text-center">
+                <h3 id="confirmModalTitle" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2"></h3>
+                <p id="confirmModalMessage" class="text-sm text-gray-500 dark:text-gray-400 mb-6"></p>
+                <div class="flex space-x-3 justify-center">
+                    <button id="confirmCancelBtn" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-1">Cancel</button>
+                    <button id="confirmOkBtn" class="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30 flex-1">OK</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Sidebar -->
     <aside id="sidebar" class="w-full md:w-80 border-r border-gray-100 dark:border-gray-800 flex flex-col bg-gray-50/50 dark:bg-gray-900/50 absolute md:relative z-20 h-full transition-transform duration-300 ease-in-out">
         <div class="p-6 flex flex-col space-y-4">
@@ -181,37 +212,6 @@ if (!isset($_SESSION['user_id'])) {
                     </svg>
                     <span id="newNotebookBtnLabel" class="text-xs">管理</span>
                 </button>
-            </div>
-
-            <!-- Notebook Selection Modal (Apple Style) -->
-            <div id="notebookSelectorModal" class="fixed inset-0 z-50 hidden items-center justify-center p-4">
-                <div id="notebookSelectorBackdrop" class="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity"></div>
-                <div class="relative w-full max-w-[320px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100 flex flex-col max-h-[70vh]">
-                    <div class="px-4 py-3 border-b border-gray-100/50 dark:border-gray-800/50 flex justify-between items-center">
-                        <h3 id="notebookSelectorTitle" class="text-sm font-semibold text-gray-900 dark:text-gray-100">Select Notebook</h3>
-                        <button id="closeNotebookSelectorBtn" class="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-                            <svg class="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                        </button>
-                    </div>
-                    <div id="notebookSelectorList" class="overflow-y-auto p-2 space-y-1">
-                        <!-- Items injected here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- Confirm Modal -->
-            <div id="confirmModal" class="fixed inset-0 z-[60] hidden items-center justify-center p-4">
-                <div id="confirmModalBackdrop" class="absolute inset-0 bg-black/20 backdrop-blur-sm transition-opacity"></div>
-                <div class="relative w-full max-w-[320px] bg-white/90 dark:bg-gray-900/90 backdrop-blur-xl border border-white/20 dark:border-gray-700/50 rounded-2xl shadow-2xl overflow-hidden transform transition-all scale-100 flex flex-col">
-                    <div class="p-6 text-center">
-                        <h3 id="confirmModalTitle" class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2"></h3>
-                        <p id="confirmModalMessage" class="text-sm text-gray-500 dark:text-gray-400 mb-6"></p>
-                        <div class="flex space-x-3 justify-center">
-                            <button id="confirmCancelBtn" class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors flex-1">Cancel</button>
-                            <button id="confirmOkBtn" class="px-4 py-2 text-sm font-medium text-white bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors shadow-lg shadow-blue-500/30 flex-1">OK</button>
-                        </div>
-                    </div>
-                </div>
             </div>
 
             <!-- Global Search -->
@@ -595,7 +595,7 @@ if (!isset($_SESSION['user_id'])) {
                 saving: '保存中...',
                 saved: '已保存',
                 notebookAll: '全部笔记',
-                notebookNone: '未选择笔记本',
+                notebookNone: '暂无',
                 newNotebook: '管理',
                 notebookCreateTitle: '管理笔记本',
                 notebookCreateSubtitle: '新建或管理现有笔记本',
@@ -626,7 +626,7 @@ if (!isset($_SESSION['user_id'])) {
                 saving: 'Saving...',
                 saved: 'Saved',
                 notebookAll: 'All Notes',
-                notebookNone: 'No Notebook',
+                notebookNone: 'None',
                 newNotebook: 'Manage',
                 notebookCreateTitle: 'Manage Notebooks',
                 notebookCreateSubtitle: 'Create new or manage existing',
@@ -1021,26 +1021,28 @@ if (!isset($_SESSION['user_id'])) {
             if (!notebookSelectorModal) return;
             notebookSelectorMode = mode;
             renderNotebookSelectorList();
+            
+            // Ensure visible state immediately (fix for H5/mobile)
+            const modalContent = notebookSelectorModal.querySelector('div.relative');
+            modalContent.classList.remove('scale-95', 'opacity-0');
+            modalContent.classList.add('scale-100', 'opacity-100');
+            notebookSelectorBackdrop.classList.remove('opacity-0');
+            
             notebookSelectorModal.classList.remove('hidden');
             notebookSelectorModal.classList.add('flex');
-            // Animate in
-            setTimeout(() => {
-                notebookSelectorModal.querySelector('div.relative').classList.remove('scale-95', 'opacity-0');
-                notebookSelectorModal.querySelector('div.relative').classList.add('scale-100', 'opacity-100');
-                notebookSelectorBackdrop.classList.remove('opacity-0');
-            }, 10);
         }
 
         function closeNotebookSelector() {
             if (!notebookSelectorModal) return;
-            // Animate out
-            notebookSelectorModal.querySelector('div.relative').classList.remove('scale-100', 'opacity-100');
-            notebookSelectorModal.querySelector('div.relative').classList.add('scale-95', 'opacity-0');
+            
+            notebookSelectorModal.classList.add('hidden');
+            notebookSelectorModal.classList.remove('flex');
+            
+            // Reset state
+            const modalContent = notebookSelectorModal.querySelector('div.relative');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
             notebookSelectorBackdrop.classList.add('opacity-0');
-            setTimeout(() => {
-                notebookSelectorModal.classList.add('hidden');
-                notebookSelectorModal.classList.remove('flex');
-            }, 200);
         }
 
         async function selectNotebook(val) {
@@ -1233,29 +1235,28 @@ if (!isset($_SESSION['user_id'])) {
 
             onConfirmCallback = callback;
             
+            // Ensure visible state immediately (fix for H5/mobile)
+            const modalContent = confirmModal.querySelector('div.relative');
+            modalContent.classList.remove('scale-95', 'opacity-0');
+            modalContent.classList.add('scale-100', 'opacity-100');
+            confirmModalBackdrop.classList.remove('opacity-0');
+
             confirmModal.classList.remove('hidden');
             confirmModal.classList.add('flex');
-            
-            // Animate in
-            setTimeout(() => {
-                confirmModal.querySelector('div.relative').classList.remove('scale-95', 'opacity-0');
-                confirmModal.querySelector('div.relative').classList.add('scale-100', 'opacity-100');
-                confirmModalBackdrop.classList.remove('opacity-0');
-            }, 10);
         }
 
         function closeConfirmModal() {
             if (!confirmModal) return;
             
-            confirmModal.querySelector('div.relative').classList.remove('scale-100', 'opacity-100');
-            confirmModal.querySelector('div.relative').classList.add('scale-95', 'opacity-0');
-            confirmModalBackdrop.classList.add('opacity-0');
+            confirmModal.classList.add('hidden');
+            confirmModal.classList.remove('flex');
+            onConfirmCallback = null;
             
-            setTimeout(() => {
-                confirmModal.classList.add('hidden');
-                confirmModal.classList.remove('flex');
-                onConfirmCallback = null;
-            }, 200);
+            // Reset state
+            const modalContent = confirmModal.querySelector('div.relative');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+            modalContent.classList.add('scale-95', 'opacity-0');
+            confirmModalBackdrop.classList.add('opacity-0');
         }
 
         if (confirmCancelBtn) confirmCancelBtn.addEventListener('click', closeConfirmModal);
