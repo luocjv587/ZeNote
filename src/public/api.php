@@ -6,6 +6,129 @@ require_once __DIR__ . '/../config.php';
 
 header('Content-Type: application/json');
 
+function zenote_send_backup_email($pdo, $userId)
+{
+    if (!file_exists(DB_PATH)) {
+        return ['success' => false, 'error' => 'Database file not found'];
+    }
+    $stmt = $pdo->prepare("SELECT qq_email_account, qq_email_password, qq_email_to FROM z_user WHERE id = ?");
+    $stmt->execute([$userId]);
+    $user = $stmt->fetch();
+    if (!$user) {
+        return ['success' => false, 'error' => 'User not found'];
+    }
+    $from = trim($user['qq_email_account'] ?? '');
+    $password = trim($user['qq_email_password'] ?? '');
+    $to = trim($user['qq_email_to'] ?? '');
+    if ($from === '' || $password === '' || $to === '') {
+        return ['success' => false, 'error' => '邮箱配置不完整'];
+    }
+    $subject = 'ZeNote 数据库备份';
+    $boundary = md5(uniqid((string)time(), true));
+    $filename = 'zenote-' . date('Ymd-His') . '.db';
+    $headers = [];
+    $headers[] = 'From: ' . $from;
+    $headers[] = 'To: ' . $to;
+    $headers[] = 'MIME-Version: 1.0';
+    $headers[] = 'Content-Type: multipart/mixed; boundary="' . $boundary . '"';
+    $body = '';
+    $body .= '--' . $boundary . "\r\n";
+    $body .= 'Content-Type: text/plain; charset="utf-8"' . "\r\n";
+    $body .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
+    $body .= "附件为当前 ZeNote SQLite 数据库备份文件，请妥善保存。\r\n\r\n";
+    $body .= '--' . $boundary . "\r\n";
+    $body .= 'Content-Type: application/octet-stream; name="' . $filename . '"' . "\r\n";
+    $body .= "Content-Transfer-Encoding: base64\r\n";
+    $body .= 'Content-Disposition: attachment; filename="' . $filename . '"' . "\r\n\r\n";
+    $body .= chunk_split(base64_encode(file_get_contents(DB_PATH))) . "\r\n";
+    $body .= '--' . $boundary . "--\r\n";
+    $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
+    $smtpHost = 'ssl://smtp.qq.com';
+    $smtpPort = 465;
+    $errno = 0;
+    $errstr = '';
+    $fp = @stream_socket_client($smtpHost . ':' . $smtpPort, $errno, $errstr, 30);
+    if (!$fp) {
+        return ['success' => false, 'error' => '无法连接 QQ SMTP: ' . $errstr];
+    }
+    stream_set_timeout($fp, 30);
+    $line = fgets($fp, 515);
+    if (substr($line, 0, 3) !== '220') {
+        fclose($fp);
+        return ['success' => false, 'error' => 'SMTP 欢迎信息异常: ' . trim($line)];
+    }
+    fwrite($fp, "EHLO localhost\r\n");
+    $ehloOk = false;
+    while ($l = fgets($fp, 515)) {
+        $code = substr($l, 0, 3);
+        $ehloOk = $code === '250' ? true : $ehloOk;
+        if (isset($l[3]) && $l[3] !== '-') {
+            break;
+        }
+    }
+    if (!$ehloOk) {
+        fclose($fp);
+        return ['success' => false, 'error' => 'SMTP EHLO 失败'];
+    }
+    fwrite($fp, "AUTH LOGIN\r\n");
+    $l = fgets($fp, 515);
+    if (substr($l, 0, 3) !== '334') {
+        fclose($fp);
+        return ['success' => false, 'error' => 'SMTP 不支持 AUTH LOGIN'];
+    }
+    fwrite($fp, base64_encode($from) . "\r\n");
+    $l = fgets($fp, 515);
+    if (substr($l, 0, 3) !== '334') {
+        fclose($fp);
+        return ['success' => false, 'error' => 'SMTP 用户名被拒绝'];
+    }
+    fwrite($fp, base64_encode($password) . "\r\n");
+    $l = fgets($fp, 515);
+    if (substr($l, 0, 3) !== '235') {
+        fclose($fp);
+        return ['success' => false, 'error' => 'SMTP 授权码错误或被拒绝'];
+    }
+    fwrite($fp, "MAIL FROM:<" . $from . ">\r\n");
+    $l = fgets($fp, 515);
+    if (substr($l, 0, 3) !== '250') {
+        fclose($fp);
+        return ['success' => false, 'error' => 'SMTP MAIL FROM 失败: ' . trim($l)];
+    }
+    fwrite($fp, "RCPT TO:<" . $to . ">\r\n");
+    $l = fgets($fp, 515);
+    if ($l === false || (substr($l, 0, 3) !== '250' && substr($l, 0, 3) !== '251')) {
+        fclose($fp);
+        return ['success' => false, 'error' => 'SMTP RCPT TO 失败: ' . trim((string)$l)];
+    }
+    fwrite($fp, "DATA\r\n");
+    $l = fgets($fp, 515);
+    if (substr($l, 0, 3) !== '354') {
+        fclose($fp);
+        return ['success' => false, 'error' => 'SMTP DATA 阶段失败: ' . trim($l)];
+    }
+    $data = '';
+    $data .= implode("\r\n", $headers) . "\r\n";
+    $data .= "Subject: " . $encodedSubject . "\r\n\r\n";
+    $data .= $body . "\r\n";
+    fwrite($fp, $data . "\r\n.\r\n");
+    $l = fgets($fp, 515);
+    if (substr($l, 0, 3) !== '250') {
+        fclose($fp);
+        return ['success' => false, 'error' => 'SMTP 发送失败: ' . trim($l)];
+    }
+    fwrite($fp, "QUIT\r\n");
+    fclose($fp);
+    $stmt = $pdo->prepare("UPDATE z_user SET qq_email_last_sent_at = CURRENT_TIMESTAMP WHERE id = ?");
+    $stmt->execute([$userId]);
+    $stmt = $pdo->prepare("SELECT qq_email_last_sent_at FROM z_user WHERE id = ?");
+    $stmt->execute([$userId]);
+    $row = $stmt->fetch();
+    return [
+        'success' => true,
+        'last_sent_at' => $row && !empty($row['qq_email_last_sent_at']) ? $row['qq_email_last_sent_at'] : null
+    ];
+}
+
 $method = $_SERVER['REQUEST_METHOD'];
 $input = json_decode(file_get_contents('php://input'), true);
 $action = $_GET['action'] ?? $input['action'] ?? '';
@@ -401,13 +524,69 @@ if ($action === 'download_db' && $method === 'GET') {
     exit;
 }
 
+if ($action === 'test_backup_email' && $method === 'POST') {
+    $result = zenote_send_backup_email($pdo, $user_id);
+    if ($result['success']) {
+        echo json_encode(['success' => true, 'last_sent_at' => $result['last_sent_at']]);
+    } else {
+        http_response_code(400);
+        echo json_encode(['error' => $result['error'] ?? 'Unknown error']);
+    }
+    exit;
+}
+
+if ($action === 'maybe_send_backup_email' && $method === 'POST') {
+    $stmt = $pdo->prepare("SELECT qq_email_auto_enabled, qq_email_last_sent_at FROM z_user WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $user = $stmt->fetch();
+    if (!$user) {
+        http_response_code(404);
+        echo json_encode(['error' => 'User not found']);
+        exit;
+    }
+    if (!(int)($user['qq_email_auto_enabled'] ?? 0)) {
+        echo json_encode(['success' => true, 'ran' => false]);
+        exit;
+    }
+    $lastSent = $user['qq_email_last_sent_at'] ?? null;
+    $shouldSend = false;
+    if (!$lastSent) {
+        $shouldSend = true;
+    } else {
+        $lastTs = strtotime($lastSent);
+        if ($lastTs === false) {
+            $shouldSend = true;
+        } else {
+            if (time() - $lastTs >= 86400) {
+                $shouldSend = true;
+            }
+        }
+    }
+    if (!$shouldSend) {
+        echo json_encode(['success' => true, 'ran' => false, 'last_sent_at' => $lastSent]);
+        exit;
+    }
+    $result = zenote_send_backup_email($pdo, $user_id);
+    if ($result['success']) {
+        echo json_encode(['success' => true, 'ran' => true, 'last_sent_at' => $result['last_sent_at']]);
+    } else {
+        http_response_code(400);
+        echo json_encode(['error' => $result['error'] ?? 'Unknown error']);
+    }
+    exit;
+}
+
 if ($action === 'get_settings' && $method === 'GET') {
-    $stmt = $pdo->prepare("SELECT aliyun_api_key, aliyun_model_name FROM z_user WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at FROM z_user WHERE id = ?");
     $stmt->execute([$user_id]);
     $user = $stmt->fetch();
     echo json_encode([
         'aliyun_api_key' => $user['aliyun_api_key'] ?? '',
-        'aliyun_model_name' => $user['aliyun_model_name'] ?? 'qwen-plus'
+        'aliyun_model_name' => $user['aliyun_model_name'] ?? 'qwen-plus',
+        'qq_email_account' => $user['qq_email_account'] ?? '',
+        'qq_email_to' => $user['qq_email_to'] ?? '',
+        'qq_email_auto_enabled' => (int)($user['qq_email_auto_enabled'] ?? 0),
+        'qq_email_last_sent_at' => $user['qq_email_last_sent_at'] ?? null
     ]);
     exit;
 }
@@ -415,10 +594,23 @@ if ($action === 'get_settings' && $method === 'GET') {
 if ($action === 'save_settings' && $method === 'POST') {
     $apiKey = trim($input['aliyun_api_key'] ?? '');
     $modelName = trim($input['aliyun_model_name'] ?? 'qwen-plus');
-    
-    $stmt = $pdo->prepare("UPDATE z_user SET aliyun_api_key = ?, aliyun_model_name = ? WHERE id = ?");
-    $stmt->execute([$apiKey, $modelName, $user_id]);
-    
+    $qqAccount = array_key_exists('qq_email_account', $input) ? trim($input['qq_email_account']) : null;
+    $qqPassword = array_key_exists('qq_email_password', $input) ? trim($input['qq_email_password']) : null;
+    $qqTo = array_key_exists('qq_email_to', $input) ? trim($input['qq_email_to']) : null;
+    $qqAutoEnabled = array_key_exists('qq_email_auto_enabled', $input) ? (int)$input['qq_email_auto_enabled'] : null;
+
+    $stmt = $pdo->prepare("SELECT qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled FROM z_user WHERE id = ?");
+    $stmt->execute([$user_id]);
+    $current = $stmt->fetch();
+
+    $newAccount = $qqAccount !== null ? $qqAccount : ($current['qq_email_account'] ?? '');
+    $newPassword = $qqPassword !== null && $qqPassword !== '' ? $qqPassword : ($current['qq_email_password'] ?? '');
+    $newTo = $qqTo !== null ? $qqTo : ($current['qq_email_to'] ?? '');
+    $newAutoEnabled = $qqAutoEnabled !== null ? $qqAutoEnabled : (int)($current['qq_email_auto_enabled'] ?? 0);
+
+    $stmt = $pdo->prepare("UPDATE z_user SET aliyun_api_key = ?, aliyun_model_name = ?, qq_email_account = ?, qq_email_password = ?, qq_email_to = ?, qq_email_auto_enabled = ? WHERE id = ?");
+    $stmt->execute([$apiKey, $modelName, $newAccount, $newPassword, $newTo, $newAutoEnabled, $user_id]);
+
     echo json_encode(['success' => true]);
     exit;
 }

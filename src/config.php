@@ -97,12 +97,21 @@ try {
         $pdo->exec("ALTER TABLE z_article ADD COLUMN deleted_at DATETIME DEFAULT NULL");
     }
 
-    // Migration: Add aliyun_api_key and aliyun_model_name to z_user
     try {
         $pdo->query("SELECT aliyun_api_key FROM z_user LIMIT 1");
     } catch (PDOException $e) {
         $pdo->exec("ALTER TABLE z_user ADD COLUMN aliyun_api_key TEXT");
         $pdo->exec("ALTER TABLE z_user ADD COLUMN aliyun_model_name TEXT DEFAULT 'qwen-plus'");
+    }
+
+    try {
+        $pdo->query("SELECT qq_email_account FROM z_user LIMIT 1");
+    } catch (PDOException $e) {
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_email_account TEXT");
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_email_password TEXT");
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_email_to TEXT");
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_email_auto_enabled INTEGER DEFAULT 0");
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_email_last_sent_at DATETIME DEFAULT NULL");
     }
 
 } catch (PDOException $e) {

@@ -1895,10 +1895,21 @@ if (!isset($_SESSION['user_id'])) {
             window.location.href = 'login.php';
         });
 
-        // Initial load
+        async function maybeSendBackupEmail() {
+            try {
+                await fetch('api.php?action=maybe_send_backup_email', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+            } catch (e) {
+            }
+        }
+
         (async () => {
             await fetchNotebooks();
             fetchNotes();
+            maybeSendBackupEmail();
         })();
 
         // Trash & History Logic

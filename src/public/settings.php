@@ -48,7 +48,6 @@ if (!isset($_SESSION['user_id'])) {
         </div>
 
         <div class="mt-6 grid grid-cols-1 gap-4">
-            <!-- AI Settings -->
             <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
                 <h2 class="text-lg font-semibold">AI Configuration</h2>
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">配置阿里云百炼 API Key 以使用 AI 功能</p>
@@ -79,6 +78,43 @@ if (!isset($_SESSION['user_id'])) {
                     <button id="exportBtn" class="px-4 py-2 text-sm rounded-full bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity">
                         获取并导出
                     </button>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+                <h2 class="text-lg font-semibold">邮箱备份</h2>
+                <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">配置 QQ 邮箱，将数据库备份发送到指定邮箱</p>
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">发件 QQ 邮箱</label>
+                        <input type="email" id="qqEmailAccountInput" placeholder="例如：123456@qq.com" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-black focus:border-black dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">授权码</label>
+                        <input type="password" id="qqEmailPasswordInput" placeholder="QQ 邮箱 SMTP 授权码" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-black focus:border-black dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">接收邮箱</label>
+                        <input type="email" id="qqEmailToInput" placeholder="接收备份的邮箱地址" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-black focus:border-black dark:text-white">
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-gray-700 dark:text-gray-300">自动发送数据库备份</p>
+                            <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">开启后，每天自动发送数据库文件到上方邮箱</p>
+                            <p id="qqEmailLastSentText" class="text-xs text-gray-400 dark:text-gray-500 mt-1 hidden"></p>
+                        </div>
+                        <button id="qqEmailAutoToggle" type="button" class="relative inline-flex h-6 w-11 items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-200 dark:bg-gray-700 transition-colors">
+                            <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform translate-x-0"></span>
+                        </button>
+                    </div>
+                    <div class="flex justify-end space-x-3 pt-1">
+                        <button id="qqEmailTestBtn" class="px-4 py-2 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                            测试发送
+                        </button>
+                        <button id="saveEmailSettingsBtn" class="px-5 py-2 text-sm rounded-full bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity">
+                            保存邮箱配置
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -125,16 +161,51 @@ if (!isset($_SESSION['user_id'])) {
         const apiKeyInput = document.getElementById('apiKeyInput');
         const modelNameInput = document.getElementById('modelNameInput');
         const saveAiSettingsBtn = document.getElementById('saveAiSettingsBtn');
+        const qqEmailAccountInput = document.getElementById('qqEmailAccountInput');
+        const qqEmailPasswordInput = document.getElementById('qqEmailPasswordInput');
+        const qqEmailToInput = document.getElementById('qqEmailToInput');
+        const qqEmailAutoToggle = document.getElementById('qqEmailAutoToggle');
+        const qqEmailLastSentText = document.getElementById('qqEmailLastSentText');
+        const saveEmailSettingsBtn = document.getElementById('saveEmailSettingsBtn');
+        const qqEmailTestBtn = document.getElementById('qqEmailTestBtn');
 
-        // Load Settings
+        function updateAutoToggle(enabled) {
+            if (!qqEmailAutoToggle) return;
+            const knob = qqEmailAutoToggle.querySelector('span');
+            if (enabled) {
+                qqEmailAutoToggle.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+                qqEmailAutoToggle.classList.add('bg-black', 'dark:bg-white');
+                if (knob) {
+                    knob.classList.remove('translate-x-0');
+                    knob.classList.add('translate-x-5');
+                }
+                qqEmailAutoToggle.dataset.enabled = '1';
+            } else {
+                qqEmailAutoToggle.classList.add('bg-gray-200', 'dark:bg-gray-700');
+                qqEmailAutoToggle.classList.remove('bg-black', 'dark:bg-white');
+                if (knob) {
+                    knob.classList.add('translate-x-0');
+                    knob.classList.remove('translate-x-5');
+                }
+                qqEmailAutoToggle.dataset.enabled = '0';
+            }
+        }
+
         fetch('api.php?action=get_settings')
             .then(res => res.json())
             .then(data => {
-                if(data.aliyun_api_key) apiKeyInput.value = data.aliyun_api_key;
-                if(data.aliyun_model_name) modelNameInput.value = data.aliyun_model_name;
+                if (data.aliyun_api_key) apiKeyInput.value = data.aliyun_api_key;
+                if (data.aliyun_model_name) modelNameInput.value = data.aliyun_model_name;
+                if (data.qq_email_account) qqEmailAccountInput.value = data.qq_email_account;
+                if (data.qq_email_to) qqEmailToInput.value = data.qq_email_to;
+                const enabled = data.qq_email_auto_enabled ? true : false;
+                updateAutoToggle(enabled);
+                if (data.qq_email_last_sent_at) {
+                    qqEmailLastSentText.textContent = '最近发送时间：' + data.qq_email_last_sent_at;
+                    qqEmailLastSentText.classList.remove('hidden');
+                }
             });
 
-        // Save Settings
         saveAiSettingsBtn.addEventListener('click', async () => {
             const apiKey = apiKeyInput.value.trim();
             const modelName = modelNameInput.value.trim();
@@ -162,6 +233,85 @@ if (!isset($_SESSION['user_id'])) {
                 saveAiSettingsBtn.textContent = '保存配置';
             }
         });
+
+        if (qqEmailAutoToggle) {
+            qqEmailAutoToggle.addEventListener('click', () => {
+                const current = qqEmailAutoToggle.dataset.enabled === '1';
+                updateAutoToggle(!current);
+            });
+        }
+
+        if (saveEmailSettingsBtn) {
+            saveEmailSettingsBtn.addEventListener('click', async () => {
+                const account = qqEmailAccountInput.value.trim();
+                const password = qqEmailPasswordInput.value.trim();
+                const to = qqEmailToInput.value.trim();
+                const autoEnabled = qqEmailAutoToggle.dataset.enabled === '1' ? 1 : 0;
+
+                saveEmailSettingsBtn.disabled = true;
+                saveEmailSettingsBtn.textContent = '保存中...';
+
+                try {
+                    const payload = {
+                        aliyun_api_key: apiKeyInput.value.trim(),
+                        aliyun_model_name: modelNameInput.value.trim(),
+                        qq_email_account: account,
+                        qq_email_to: to,
+                        qq_email_auto_enabled: autoEnabled
+                    };
+                    if (password) {
+                        payload.qq_email_password = password;
+                    }
+                    const res = await fetch('api.php?action=save_settings', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(payload)
+                    });
+                    if (res.ok) {
+                        alert('邮箱配置已保存');
+                        qqEmailPasswordInput.value = '';
+                    } else {
+                        alert('保存邮箱配置失败');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('保存邮箱配置出错');
+                } finally {
+                    saveEmailSettingsBtn.disabled = false;
+                    saveEmailSettingsBtn.textContent = '保存邮箱配置';
+                }
+            });
+        }
+
+        if (qqEmailTestBtn) {
+            qqEmailTestBtn.addEventListener('click', async () => {
+                qqEmailTestBtn.disabled = true;
+                qqEmailTestBtn.textContent = '测试中...';
+                try {
+                    const res = await fetch('api.php?action=test_backup_email', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({})
+                    });
+                    const data = await res.json();
+                    if (res.ok && data.success) {
+                        alert('测试邮件已发送，请检查邮箱');
+                        if (data.last_sent_at) {
+                            qqEmailLastSentText.textContent = '最近发送时间：' + data.last_sent_at;
+                            qqEmailLastSentText.classList.remove('hidden');
+                        }
+                    } else {
+                        alert(data.error || '测试发送失败');
+                    }
+                } catch (e) {
+                    console.error(e);
+                    alert('测试发送出错');
+                } finally {
+                    qqEmailTestBtn.disabled = false;
+                    qqEmailTestBtn.textContent = '测试发送';
+                }
+            });
+        }
         const backBtn = document.getElementById('backBtn');
         const homeBtn = document.getElementById('homeBtn');
 
