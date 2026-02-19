@@ -25,7 +25,7 @@ function zenote_send_backup_email($pdo, $userId)
     }
     $subject = 'ZeNote 数据库备份';
     $boundary = md5(uniqid((string)time(), true));
-    $filename = 'zenote-' . date('Ymd-His') . '.db';
+    $filename = 'zenote-' . date('Ymd-His') . '.db.gz';
     $headers = [];
     $headers[] = 'From: ' . $from;
     $headers[] = 'To: ' . $to;
@@ -37,10 +37,12 @@ function zenote_send_backup_email($pdo, $userId)
     $body .= "Content-Transfer-Encoding: 8bit\r\n\r\n";
     $body .= "附件为当前 ZeNote SQLite 数据库备份文件，请妥善保存。\r\n\r\n";
     $body .= '--' . $boundary . "\r\n";
-    $body .= 'Content-Type: application/octet-stream; name="' . $filename . '"' . "\r\n";
+    $body .= 'Content-Type: application/gzip; name="' . $filename . '"' . "\r\n";
     $body .= "Content-Transfer-Encoding: base64\r\n";
     $body .= 'Content-Disposition: attachment; filename="' . $filename . '"' . "\r\n\r\n";
-    $body .= chunk_split(base64_encode(file_get_contents(DB_PATH))) . "\r\n";
+    $raw = file_get_contents(DB_PATH);
+    $compressed = gzencode($raw, 9);
+    $body .= chunk_split(base64_encode($compressed !== false ? $compressed : $raw)) . "\r\n";
     $body .= '--' . $boundary . "--\r\n";
     $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
     $smtpHost = 'ssl://smtp.qq.com';
