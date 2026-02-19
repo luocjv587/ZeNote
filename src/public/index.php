@@ -105,7 +105,6 @@ if (!isset($_SESSION['user_id'])) {
         .ql-editor { font-size: 1.1rem; line-height: 1.6; padding: 2rem; }
         .ql-editor.ql-blank::before { left: 2rem; color: #9ca3af; font-style: normal; }
         
-        /* Dark Mode Overrides */
         .dark .ql-toolbar.ql-snow { border-bottom-color: #374151; background-color: #1f2937; }
         .dark .ql-toolbar.ql-snow .ql-stroke { stroke: #9ca3af; }
         .dark .ql-toolbar.ql-snow .ql-fill { fill: #9ca3af; }
@@ -113,7 +112,6 @@ if (!isset($_SESSION['user_id'])) {
         .dark .ql-editor { color: #e5e7eb; }
         .dark .ql-editor.ql-blank::before { color: #6b7280; }
 
-        /* Apple-style scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
@@ -122,7 +120,6 @@ if (!isset($_SESSION['user_id'])) {
         .dark ::-webkit-scrollbar-thumb { background: #4b5563; }
         .dark ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
 
-        /* AI Markdown Preview Styles */
         #aiResponseText table { width: 100%; border-collapse: collapse; margin: 1em 0; }
         #aiResponseText th, #aiResponseText td { border: 1px solid #e5e7eb; padding: 0.5em; text-align: left; }
         #aiResponseText th { background-color: #f9fafb; font-weight: 600; }
@@ -139,6 +136,24 @@ if (!isset($_SESSION['user_id'])) {
         #aiResponseText pre code { background: none; padding: 0; }
         #aiResponseText blockquote { border-left: 4px solid #e5e7eb; padding-left: 1em; color: #6b7280; margin: 1em 0; }
         .dark #aiResponseText blockquote { border-color: #4b5563; color: #9ca3af; }
+
+        @media (min-width: 768px) {
+            body.sidebar-collapsed #sidebar {
+                flex: 0 0 0;
+                width: 0;
+                padding: 0;
+                border-right: none;
+                overflow: hidden;
+            }
+
+            body.sidebar-collapsed #noteList {
+                padding: 0;
+            }
+
+            body.sidebar-collapsed #mainContent {
+                flex: 1 1 auto;
+            }
+        }
     </style>
 </head>
 <body class="bg-white dark:bg-gray-900 h-screen flex overflow-hidden text-gray-900 dark:text-gray-100 selection:bg-gray-200 dark:selection:bg-gray-700">
@@ -232,9 +247,17 @@ if (!isset($_SESSION['user_id'])) {
         <!-- Editor Header/Toolbar -->
         <div class="border-b border-gray-100 dark:border-gray-800 flex items-center justify-between px-4 md:px-8 py-3 bg-white/80 dark:bg-gray-900/80 backdrop-blur-sm sticky top-0 z-10">
             <div class="flex items-center w-full">
-                <!-- Back Button (Mobile) -->
                 <button id="backBtn" class="mr-3 md:hidden p-2 text-gray-500 hover:text-black dark:hover:text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                </button>
+
+                <button id="sidebarToggleBtn" class="mr-3 hidden md:inline-flex items-center justify-center p-2 rounded-full border border-gray-200 dark:border-gray-700 bg-white/80 dark:bg-gray-900/80 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors" title="Toggle Sidebar">
+                    <svg id="sidebarCollapseIcon" class="w-4 h-4 text-gray-700 dark:text-gray-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <svg id="sidebarExpandIcon" class="w-4 h-4 text-gray-700 dark:text-gray-200 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
                 </button>
                 
                 <div class="w-full">
@@ -556,6 +579,9 @@ if (!isset($_SESSION['user_id'])) {
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
         const backBtn = document.getElementById('backBtn');
+        const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+        const sidebarCollapseIcon = document.getElementById('sidebarCollapseIcon');
+        const sidebarExpandIcon = document.getElementById('sidebarExpandIcon');
         const globalSearchEl = document.getElementById('globalSearch');
         const themeToggleBtn = document.getElementById('themeToggleBtn');
         const sunIcon = document.getElementById('sunIcon');
@@ -840,6 +866,39 @@ if (!isset($_SESSION['user_id'])) {
             const isDark = document.documentElement.classList.contains('dark');
             updateTheme(!isDark);
         });
+
+        let isSidebarCollapsed = localStorage.getItem('sidebarCollapsed') === 'true';
+
+        function applySidebarCollapsedState() {
+            if (!sidebarToggleBtn || !sidebarCollapseIcon || !sidebarExpandIcon) return;
+            if (window.innerWidth >= 768) {
+                if (isSidebarCollapsed) {
+                    document.body.classList.add('sidebar-collapsed');
+                    sidebarCollapseIcon.classList.add('hidden');
+                    sidebarExpandIcon.classList.remove('hidden');
+                } else {
+                    document.body.classList.remove('sidebar-collapsed');
+                    sidebarCollapseIcon.classList.remove('hidden');
+                    sidebarExpandIcon.classList.add('hidden');
+                }
+            } else {
+                document.body.classList.remove('sidebar-collapsed');
+                sidebarCollapseIcon.classList.remove('hidden');
+                sidebarExpandIcon.classList.add('hidden');
+            }
+        }
+
+        if (sidebarToggleBtn) {
+            sidebarToggleBtn.addEventListener('click', () => {
+                isSidebarCollapsed = !isSidebarCollapsed;
+                localStorage.setItem('sidebarCollapsed', isSidebarCollapsed ? 'true' : 'false');
+                applySidebarCollapsedState();
+            });
+        }
+
+        window.addEventListener('resize', applySidebarCollapsedState);
+
+        applySidebarCollapsedState();
         document.getElementById('settingsBtn').addEventListener('click', () => {
             window.location.href = 'settings.php';
         });
