@@ -6,11 +6,152 @@ require_once __DIR__ . '/../config.php';
 
 header('Content-Type: application/json');
 
+function zenote_build_user_db($pdo, $userId)
+{
+    $tmpPath = tempnam(sys_get_temp_dir(), 'zenote_user_');
+    if ($tmpPath === false) {
+        return null;
+    }
+    try {
+        $tmpPdo = new PDO('sqlite:' . $tmpPath);
+        $tmpPdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $tmpPdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+
+        $tmpPdo->exec("CREATE TABLE IF NOT EXISTS z_user (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL,
+            aliyun_api_key TEXT,
+            aliyun_model_name TEXT DEFAULT 'qwen-plus',
+            qq_email_account TEXT,
+            qq_email_password TEXT,
+            qq_email_to TEXT,
+            qq_email_auto_enabled INTEGER DEFAULT 0,
+            qq_email_last_sent_at DATETIME DEFAULT NULL,
+            qq_smtp_host TEXT,
+            qq_smtp_port INTEGER,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )");
+
+        $tmpPdo->exec("CREATE TABLE IF NOT EXISTS z_article (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            title TEXT NOT NULL,
+            content TEXT,
+            summary TEXT,
+            is_pinned INTEGER DEFAULT 0,
+            is_deleted INTEGER DEFAULT 0,
+            deleted_at DATETIME DEFAULT NULL,
+            notebook_id INTEGER NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES z_user(id)
+        )");
+
+        $tmpPdo->exec("CREATE TABLE IF NOT EXISTS z_article_history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            article_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            title TEXT,
+            content TEXT,
+            summary TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (article_id) REFERENCES z_article(id),
+            FOREIGN KEY (user_id) REFERENCES z_user(id)
+        )");
+
+        $tmpPdo->exec("CREATE TABLE IF NOT EXISTS z_image (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            article_id INTEGER NOT NULL,
+            image_id TEXT NOT NULL,
+            data TEXT,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, image_id),
+            FOREIGN KEY (user_id) REFERENCES z_user(id),
+            FOREIGN KEY (article_id) REFERENCES z_article(id)
+        )");
+
+        $tmpPdo->exec("CREATE TABLE IF NOT EXISTS z_notebook (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(user_id, name),
+            FOREIGN KEY (user_id) REFERENCES z_user(id)
+        )");
+
+        $stmt = $pdo->prepare("SELECT id, username, password, aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at, qq_smtp_host, qq_smtp_port, created_at FROM z_user WHERE id = ?");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch();
+        if ($user) {
+            $ins = $tmpPdo->prepare("INSERT INTO z_user (id, username, password, aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at, qq_smtp_host, qq_smtp_port, created_at) VALUES (:id, :username, :password, :aliyun_api_key, :aliyun_model_name, :qq_email_account, :qq_email_password, :qq_email_to, :qq_email_auto_enabled, :qq_email_last_sent_at, :qq_smtp_host, :qq_smtp_port, :created_at)");
+            $ins->execute($user);
+        }
+
+        $stmt = $pdo->prepare("SELECT id, user_id, name, created_at FROM z_notebook WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $notebooks = $stmt->fetchAll();
+        if ($notebooks) {
+            $ins = $tmpPdo->prepare("INSERT INTO z_notebook (id, user_id, name, created_at) VALUES (:id, :user_id, :name, :created_at)");
+            foreach ($notebooks as $row) {
+                $ins->execute($row);
+            }
+        }
+
+        $stmt = $pdo->prepare("SELECT id, user_id, title, content, summary, is_pinned, is_deleted, deleted_at, notebook_id, created_at, updated_at FROM z_article WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $articles = $stmt->fetchAll();
+        if ($articles) {
+            $ins = $tmpPdo->prepare("INSERT INTO z_article (id, user_id, title, content, summary, is_pinned, is_deleted, deleted_at, notebook_id, created_at, updated_at) VALUES (:id, :user_id, :title, :content, :summary, :is_pinned, :is_deleted, :deleted_at, :notebook_id, :created_at, :updated_at)");
+            foreach ($articles as $row) {
+                $ins->execute($row);
+            }
+        }
+
+        $stmt = $pdo->prepare("SELECT id, article_id, user_id, title, content, summary, created_at FROM z_article_history WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $history = $stmt->fetchAll();
+        if ($history) {
+            $ins = $tmpPdo->prepare("INSERT INTO z_article_history (id, article_id, user_id, title, content, summary, created_at) VALUES (:id, :article_id, :user_id, :title, :content, :summary, :created_at)");
+            foreach ($history as $row) {
+                $ins->execute($row);
+            }
+        }
+
+        $stmt = $pdo->prepare("SELECT id, user_id, article_id, image_id, data, created_at, updated_at FROM z_image WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $images = $stmt->fetchAll();
+        if ($images) {
+            $ins = $tmpPdo->prepare("INSERT INTO z_image (id, user_id, article_id, image_id, data, created_at, updated_at) VALUES (:id, :user_id, :article_id, :image_id, :data, :created_at, :updated_at)");
+            foreach ($images as $row) {
+                $ins->execute($row);
+            }
+        }
+
+        return $tmpPath;
+    } catch (Exception $e) {
+        if (file_exists($tmpPath)) {
+            @unlink($tmpPath);
+        }
+        return null;
+    }
+}
+
 function zenote_send_backup_email($pdo, $userId)
 {
-    if (!file_exists(DB_PATH)) {
-        return ['success' => false, 'error' => 'Database file not found'];
+    $tmpPath = zenote_build_user_db($pdo, $userId);
+    if ($tmpPath === null || !file_exists($tmpPath)) {
+        return ['success' => false, 'error' => 'Failed to build user database'];
     }
+    $raw = file_get_contents($tmpPath);
+    if ($raw === false) {
+        @unlink($tmpPath);
+        return ['success' => false, 'error' => 'Failed to read user database'];
+    }
+    $compressed = gzencode($raw, 9);
+    @unlink($tmpPath);
     $stmt = $pdo->prepare("SELECT qq_email_account, qq_email_password, qq_email_to, qq_smtp_host, qq_smtp_port FROM z_user WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch();
@@ -515,16 +656,18 @@ if ($action === 'get_db_info' && $method === 'GET') {
 }
 
 if ($action === 'download_db' && $method === 'GET') {
-    if (!file_exists(DB_PATH)) {
-        http_response_code(404);
-        echo json_encode(['error' => 'Database not found']);
+    $tmpPath = zenote_build_user_db($pdo, $user_id);
+    if ($tmpPath === null || !file_exists($tmpPath)) {
+        http_response_code(500);
+        echo json_encode(['error' => 'Failed to build user database']);
         exit;
     }
-    $filename = 'zenote-' . date('Ymd-His') . '.db';
+    $filename = 'zenote-user-' . $user_id . '-' . date('Ymd-His') . '.db';
     header('Content-Type: application/octet-stream');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
-    header('Content-Length: ' . filesize(DB_PATH));
-    readfile(DB_PATH);
+    header('Content-Length: ' . filesize($tmpPath));
+    readfile($tmpPath);
+    @unlink($tmpPath);
     exit;
 }
 

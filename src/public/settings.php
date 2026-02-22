@@ -361,8 +361,8 @@ if (!isset($_SESSION['user_id'])) {
                 const data = await res.json();
                 if (res.ok) {
                     dbSizeText.textContent = data.size_text;
-                    dbSizeHint.textContent = '数据库大小：' + data.size_text;
-                    exportInfo.textContent = '将下载 SQLite 数据库文件，包含你所有的笔记数据';
+                    dbSizeHint.textContent = '数据库文件大小：' + data.size_text;
+                    exportInfo.textContent = '将下载 SQLite 数据库文件，包含当前账号下的所有数据';
                     openExportModal();
                 } else {
                     alert('获取数据库信息失败');
