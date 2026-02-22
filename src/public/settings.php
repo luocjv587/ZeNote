@@ -89,6 +89,16 @@ if (!isset($_SESSION['user_id'])) {
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">发件 QQ 邮箱</label>
                         <input type="email" id="qqEmailAccountInput" placeholder="例如：123456@qq.com" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-black focus:border-black dark:text-white">
                     </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SMTP 主机</label>
+                            <input type="text" id="qqSmtpHostInput" placeholder="默认：ssl://smtp.qq.com" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-black focus:border-black dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">SMTP 端口</label>
+                            <input type="number" id="qqSmtpPortInput" placeholder="默认：465" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-black focus:border-black dark:text-white">
+                        </div>
+                    </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">授权码</label>
                         <input type="password" id="qqEmailPasswordInput" placeholder="QQ 邮箱 SMTP 授权码" class="w-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl px-4 py-2 text-sm focus:ring-black focus:border-black dark:text-white">
@@ -162,6 +172,8 @@ if (!isset($_SESSION['user_id'])) {
         const modelNameInput = document.getElementById('modelNameInput');
         const saveAiSettingsBtn = document.getElementById('saveAiSettingsBtn');
         const qqEmailAccountInput = document.getElementById('qqEmailAccountInput');
+        const qqSmtpHostInput = document.getElementById('qqSmtpHostInput');
+        const qqSmtpPortInput = document.getElementById('qqSmtpPortInput');
         const qqEmailPasswordInput = document.getElementById('qqEmailPasswordInput');
         const qqEmailToInput = document.getElementById('qqEmailToInput');
         const qqEmailAutoToggle = document.getElementById('qqEmailAutoToggle');
@@ -198,6 +210,8 @@ if (!isset($_SESSION['user_id'])) {
                 if (data.aliyun_model_name) modelNameInput.value = data.aliyun_model_name;
                 if (data.qq_email_account) qqEmailAccountInput.value = data.qq_email_account;
                 if (data.qq_email_to) qqEmailToInput.value = data.qq_email_to;
+                if (data.qq_smtp_host) qqSmtpHostInput.value = data.qq_smtp_host;
+                if (data.qq_smtp_port) qqSmtpPortInput.value = data.qq_smtp_port;
                 const enabled = data.qq_email_auto_enabled ? true : false;
                 updateAutoToggle(enabled);
                 if (data.qq_email_last_sent_at) {
@@ -244,6 +258,8 @@ if (!isset($_SESSION['user_id'])) {
         if (saveEmailSettingsBtn) {
             saveEmailSettingsBtn.addEventListener('click', async () => {
                 const account = qqEmailAccountInput.value.trim();
+                const smtpHost = qqSmtpHostInput.value.trim();
+                const smtpPort = qqSmtpPortInput.value.trim();
                 const password = qqEmailPasswordInput.value.trim();
                 const to = qqEmailToInput.value.trim();
                 const autoEnabled = qqEmailAutoToggle.dataset.enabled === '1' ? 1 : 0;
@@ -257,7 +273,9 @@ if (!isset($_SESSION['user_id'])) {
                         aliyun_model_name: modelNameInput.value.trim(),
                         qq_email_account: account,
                         qq_email_to: to,
-                        qq_email_auto_enabled: autoEnabled
+                        qq_email_auto_enabled: autoEnabled,
+                        qq_smtp_host: smtpHost,
+                        qq_smtp_port: smtpPort
                     };
                     if (password) {
                         payload.qq_email_password = password;

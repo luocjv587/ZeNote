@@ -11,7 +11,7 @@ function zenote_send_backup_email($pdo, $userId)
     if (!file_exists(DB_PATH)) {
         return ['success' => false, 'error' => 'Database file not found'];
     }
-    $stmt = $pdo->prepare("SELECT qq_email_account, qq_email_password, qq_email_to FROM z_user WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT qq_email_account, qq_email_password, qq_email_to, qq_smtp_host, qq_smtp_port FROM z_user WHERE id = ?");
     $stmt->execute([$userId]);
     $user = $stmt->fetch();
     if (!$user) {
@@ -45,8 +45,10 @@ function zenote_send_backup_email($pdo, $userId)
     $body .= chunk_split(base64_encode($compressed !== false ? $compressed : $raw)) . "\r\n";
     $body .= '--' . $boundary . "--\r\n";
     $encodedSubject = '=?UTF-8?B?' . base64_encode($subject) . '?=';
-    $smtpHost = 'ssl://smtp.qq.com';
-    $smtpPort = 465;
+    $cfgHost = trim($user['qq_smtp_host'] ?? '');
+    $cfgPort = isset($user['qq_smtp_port']) && $user['qq_smtp_port'] !== '' ? (int)$user['qq_smtp_port'] : 0;
+    $smtpHost = $cfgHost !== '' ? $cfgHost : (defined('ZENOTE_SMTP_HOST') ? ZENOTE_SMTP_HOST : 'ssl://smtp.qq.com');
+    $smtpPort = $cfgPort > 0 ? $cfgPort : (defined('ZENOTE_SMTP_PORT') ? ZENOTE_SMTP_PORT : 465);
     $errno = 0;
     $errstr = '';
     $fp = @stream_socket_client($smtpHost . ':' . $smtpPort, $errno, $errstr, 30);
@@ -581,7 +583,7 @@ if ($action === 'maybe_send_backup_email' && $method === 'POST') {
 }
 
 if ($action === 'get_settings' && $method === 'GET') {
-    $stmt = $pdo->prepare("SELECT aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at FROM z_user WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at, qq_smtp_host, qq_smtp_port FROM z_user WHERE id = ?");
     $stmt->execute([$user_id]);
     $user = $stmt->fetch();
     echo json_encode([
@@ -590,7 +592,9 @@ if ($action === 'get_settings' && $method === 'GET') {
         'qq_email_account' => $user['qq_email_account'] ?? '',
         'qq_email_to' => $user['qq_email_to'] ?? '',
         'qq_email_auto_enabled' => (int)($user['qq_email_auto_enabled'] ?? 0),
-        'qq_email_last_sent_at' => $user['qq_email_last_sent_at'] ?? null
+        'qq_email_last_sent_at' => $user['qq_email_last_sent_at'] ?? null,
+        'qq_smtp_host' => $user['qq_smtp_host'] ?? '',
+        'qq_smtp_port' => isset($user['qq_smtp_port']) && $user['qq_smtp_port'] !== null ? (int)$user['qq_smtp_port'] : null
     ]);
     exit;
 }
@@ -602,8 +606,13 @@ if ($action === 'save_settings' && $method === 'POST') {
     $qqPassword = array_key_exists('qq_email_password', $input) ? trim($input['qq_email_password']) : null;
     $qqTo = array_key_exists('qq_email_to', $input) ? trim($input['qq_email_to']) : null;
     $qqAutoEnabled = array_key_exists('qq_email_auto_enabled', $input) ? (int)$input['qq_email_auto_enabled'] : null;
+    $qqSmtpHost = array_key_exists('qq_smtp_host', $input) ? trim($input['qq_smtp_host']) : null;
+    $qqSmtpPort = null;
+    if (array_key_exists('qq_smtp_port', $input)) {
+        $qqSmtpPort = $input['qq_smtp_port'] === '' ? 0 : (int)$input['qq_smtp_port'];
+    }
 
-    $stmt = $pdo->prepare("SELECT qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled FROM z_user WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled, qq_smtp_host, qq_smtp_port FROM z_user WHERE id = ?");
     $stmt->execute([$user_id]);
     $current = $stmt->fetch();
 
@@ -611,9 +620,11 @@ if ($action === 'save_settings' && $method === 'POST') {
     $newPassword = $qqPassword !== null && $qqPassword !== '' ? $qqPassword : ($current['qq_email_password'] ?? '');
     $newTo = $qqTo !== null ? $qqTo : ($current['qq_email_to'] ?? '');
     $newAutoEnabled = $qqAutoEnabled !== null ? $qqAutoEnabled : (int)($current['qq_email_auto_enabled'] ?? 0);
+    $newSmtpHost = $qqSmtpHost !== null ? $qqSmtpHost : ($current['qq_smtp_host'] ?? '');
+    $newSmtpPort = $qqSmtpPort !== null ? $qqSmtpPort : (isset($current['qq_smtp_port']) ? (int)$current['qq_smtp_port'] : 0);
 
-    $stmt = $pdo->prepare("UPDATE z_user SET aliyun_api_key = ?, aliyun_model_name = ?, qq_email_account = ?, qq_email_password = ?, qq_email_to = ?, qq_email_auto_enabled = ? WHERE id = ?");
-    $stmt->execute([$apiKey, $modelName, $newAccount, $newPassword, $newTo, $newAutoEnabled, $user_id]);
+    $stmt = $pdo->prepare("UPDATE z_user SET aliyun_api_key = ?, aliyun_model_name = ?, qq_email_account = ?, qq_email_password = ?, qq_email_to = ?, qq_email_auto_enabled = ?, qq_smtp_host = ?, qq_smtp_port = ? WHERE id = ?");
+    $stmt->execute([$apiKey, $modelName, $newAccount, $newPassword, $newTo, $newAutoEnabled, $newSmtpHost, $newSmtpPort, $user_id]);
 
     echo json_encode(['success' => true]);
     exit;

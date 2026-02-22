@@ -1,5 +1,7 @@
 <?php
 define('DB_PATH', __DIR__ . '/../data/znote.db');
+define('ZENOTE_SMTP_HOST', 'ssl://smtp.qq.com');
+define('ZENOTE_SMTP_PORT', 465);
 
 try {
     $dir = dirname(DB_PATH);
@@ -112,6 +114,13 @@ try {
         $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_email_to TEXT");
         $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_email_auto_enabled INTEGER DEFAULT 0");
         $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_email_last_sent_at DATETIME DEFAULT NULL");
+    }
+
+    try {
+        $pdo->query("SELECT qq_smtp_host FROM z_user LIMIT 1");
+    } catch (PDOException $e) {
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_smtp_host TEXT");
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_smtp_port INTEGER");
     }
 
 } catch (PDOException $e) {
