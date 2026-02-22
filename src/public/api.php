@@ -559,7 +559,9 @@ if ($action === 'maybe_send_backup_email' && $method === 'POST') {
         if ($lastTs === false) {
             $shouldSend = true;
         } else {
-            if (time() - $lastTs >= 86400) {
+            $lastDate = date('Y-m-d', $lastTs);
+            $today = date('Y-m-d');
+            if ($lastDate !== $today) {
                 $shouldSend = true;
             }
         }
