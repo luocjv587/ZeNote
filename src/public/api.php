@@ -529,6 +529,7 @@ if ($action === 'download_db' && $method === 'GET') {
 }
 
 if ($action === 'test_backup_email' && $method === 'POST') {
+    session_write_close();
     $result = zenote_send_backup_email($pdo, $user_id);
     if ($result['success']) {
         echo json_encode(['success' => true, 'last_sent_at' => $result['last_sent_at']]);
@@ -540,6 +541,7 @@ if ($action === 'test_backup_email' && $method === 'POST') {
 }
 
 if ($action === 'maybe_send_backup_email' && $method === 'POST') {
+    session_write_close();
     $stmt = $pdo->prepare("SELECT qq_email_auto_enabled, qq_email_last_sent_at FROM z_user WHERE id = ?");
     $stmt->execute([$user_id]);
     $user = $stmt->fetch();
