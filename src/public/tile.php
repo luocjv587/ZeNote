@@ -103,7 +103,7 @@ if (!isset($_SESSION['user_id'])) {
         </div>
     </aside>
     <div id="tileBackdrop" class="fixed inset-0 bg-black/20 backdrop-blur-sm z-20 hidden md:hidden"></div>
-    <main class="flex-1 overflow-y-auto md:ml-64">
+    <main class="flex-1 overflow-y-auto">
         <div class="flex items-center justify-between px-6 pt-6">
             <div class="flex items-center space-x-2">
                 <button id="openSidebarBtn" class="md:hidden px-3 py-1.5 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-full text-xs">分类</button>
