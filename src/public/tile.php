@@ -99,6 +99,10 @@ if (!isset($_SESSION['user_id'])) {
         <div class="px-5">
             <input type="text" id="globalSearch" placeholder="Search" class="w-full bg-gray-200/50 dark:bg-gray-800 border-none rounded-lg py-1.5 px-3 text-sm placeholder-gray-500 dark:placeholder-gray-400 focus:bg-white dark:focus:bg-gray-700 focus:ring-0 transition-colors dark:text-gray-200">
         </div>
+        <div class="px-5 mt-2 flex justify-between items-center">
+             <span class="text-xs font-medium text-gray-500 uppercase tracking-wider">Notebooks</span>
+             <button id="manageNotebooksBtn" class="text-xs text-blue-500 hover:text-blue-600 transition-colors">管理</button>
+        </div>
         <div id="notebookList" class="flex-1 overflow-y-auto p-4 space-y-1">
         </div>
     </aside>
@@ -123,6 +127,7 @@ if (!isset($_SESSION['user_id'])) {
                     </div>
                     <div class="flex items-center space-x-2">
                         <span id="tileSaveStatus" class="text-xs text-gray-400"></span>
+                        <button id="historyBtn" class="px-3 py-1.5 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-200 rounded-full text-xs hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">历史</button>
                         <button id="tileSaveBtn" class="px-3 py-1.5 bg-black text-white dark:bg-white dark:text-black rounded-full text-xs">保存</button>
                     </div>
                 </div>
@@ -159,6 +164,54 @@ if (!isset($_SESSION['user_id'])) {
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
         </button>
     </div>
+    <div id="notebookModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+        <div id="notebookModalBackdrop" class="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+        <div class="relative w-[90%] max-w-sm bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-6">
+            <div class="text-center">
+                <h2 id="notebookModalTitle" class="text-lg font-semibold text-gray-900 dark:text-gray-100">新建笔记本</h2>
+                <p id="notebookModalSubtitle" class="text-xs text-gray-400 dark:text-gray-500 mt-1">输入名称即可创建</p>
+            </div>
+            
+            <div class="mt-4 flex space-x-2">
+                <input id="notebookNameInput" type="text" class="flex-1 bg-gray-100 dark:bg-gray-800 border border-transparent focus:border-gray-300 dark:focus:border-gray-700 rounded-xl px-4 py-2 text-sm text-gray-900 dark:text-gray-100 focus:ring-0" placeholder="笔记本名称" />
+                <button id="notebookCreateBtn" class="px-4 py-2 text-sm rounded-xl bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity whitespace-nowrap">创建</button>
+            </div>
+
+            <div class="mt-6 border-t border-gray-100 dark:border-gray-800 pt-4">
+                <div id="notebookManagementList" class="max-h-48 overflow-y-auto space-y-2 pr-1">
+                    <!-- Items injected here -->
+                </div>
+            </div>
+
+            <div class="mt-5 flex justify-end">
+                <button id="notebookCancelBtn" class="px-4 py-2 text-sm rounded-full border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors w-full">关闭</button>
+            </div>
+        </div>
+    </div>
+    <div id="historyModal" class="fixed inset-0 z-50 hidden items-center justify-center">
+        <div id="historyModalBackdrop" class="absolute inset-0 bg-black/30 backdrop-blur-sm"></div>
+        <div class="relative w-[90%] max-w-4xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl shadow-2xl p-6 flex flex-col h-[80vh]">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-gray-900 dark:text-gray-100">历史版本</h2>
+                <button id="closeHistoryModalBtn" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            <div class="flex flex-1 overflow-hidden">
+                <div id="historyList" class="w-1/3 border-r border-gray-100 dark:border-gray-800 overflow-y-auto pr-2 space-y-2">
+                    <!-- History items -->
+                </div>
+                <div class="flex-1 pl-4 flex flex-col overflow-hidden">
+                    <div id="historyPreview" class="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-800 rounded-lg p-4 text-sm prose dark:prose-invert max-w-none">
+                        <p class="text-gray-400 text-center mt-10">选择一个版本查看详情</p>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button id="restoreHistoryBtn" class="hidden px-4 py-2 text-sm rounded-full bg-black text-white dark:bg-white dark:text-black hover:opacity-90 transition-opacity">恢复此版本</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <script>
         const settingsBtn = document.getElementById('settingsBtn');
         const logoutBtn = document.getElementById('logoutBtn');
@@ -189,6 +242,9 @@ if (!isset($_SESSION['user_id'])) {
         let currentTileNoteId = null;
         let currentTileNotebookId = null;
         let tileCurrentSelection = '';
+        let originalTitle = '';
+        let originalContent = '';
+        let isTileLoading = false;
 
         let notebooks = [];
         let selectedNotebookId = null;
@@ -198,6 +254,7 @@ if (!isset($_SESSION['user_id'])) {
         let hasMore = true;
         let loading = false;
         let searchTimeout;
+        let autoSaveTimeout;
 
         settingsBtn.addEventListener('click', () => window.location.href = 'settings.php');
         logoutBtn.addEventListener('click', async () => {
@@ -301,6 +358,12 @@ if (!isset($_SESSION['user_id'])) {
                     ]
                 }
             });
+            quillTile.on('text-change', (delta, oldDelta, source) => {
+                if (source === 'user' && !isTileLoading) {
+                    clearTimeout(autoSaveTimeout);
+                    autoSaveTimeout = setTimeout(saveTileNote, 1000);
+                }
+            });
         }
 
         newNoteBtn.addEventListener('click', () => {
@@ -308,6 +371,10 @@ if (!isset($_SESSION['user_id'])) {
             currentTileNoteId = null;
             tileTitleInput.value = '';
             quillTile.setContents([]);
+            originalTitle = '';
+            const clone = quillTile.root.cloneNode(true);
+            clone.querySelectorAll('.ql-ui').forEach(el => el.remove());
+            originalContent = clone.innerHTML;
             showEditor();
         });
 
@@ -345,7 +412,17 @@ if (!isset($_SESSION['user_id'])) {
                     <p class="text-xs text-gray-500 dark:text-gray-400 line-clamp-3">${n.preview || '暂无内容'}</p>
                     <div class="mt-3 flex items-center justify-between">
                         <p class="text-[10px] text-gray-300 dark:text-gray-600">${new Date(n.updated_at).toLocaleString()}</p>
-                        <span class="opacity-0 group-hover:opacity-100 text-[10px] text-gray-400">点击打开</span>
+                        <div class="flex space-x-1 opacity-0 group-hover:opacity-100 transition-opacity" onclick="event.stopPropagation()">
+                            <button class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors" onclick="togglePin(${n.id}, event)" title="${n.is_pinned ? '取消置顶' : '置顶'}">
+                                <svg class="w-3.5 h-3.5 ${n.is_pinned ? 'text-yellow-500 fill-current' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                            </button>
+                            <button class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors" onclick="toggleFavorite(${n.id}, ${n.is_favorite}, event)" title="${n.is_favorite == 1 ? '取消收藏' : '收藏'}">
+                                <svg class="w-3.5 h-3.5 ${n.is_favorite == 1 ? 'text-red-500 fill-current' : 'text-gray-400'}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"></path></svg>
+                            </button>
+                            <button class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors hover:text-red-500 text-gray-400" onclick="moveToTrash(${n.id}, event)" title="移至废纸篓">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `).join('');
@@ -367,6 +444,7 @@ if (!isset($_SESSION['user_id'])) {
             if (!id || isNaN(id)) return;
             initEditorIfNeeded();
             currentTileNoteId = id;
+            isTileLoading = true;
             try {
                 const res = await fetch(`api.php?action=get_note&id=${id}`);
                 const d = await res.json();
@@ -374,21 +452,42 @@ if (!isset($_SESSION['user_id'])) {
                 tileTitleInput.value = note.title || '';
                 currentTileNotebookId = note.notebook_id ?? null;
                 quillTile.root.innerHTML = note.content || '';
+                originalTitle = note.title || '';
+                const clone = quillTile.root.cloneNode(true);
+                clone.querySelectorAll('.ql-ui').forEach(el => el.remove());
+                originalContent = clone.innerHTML;
                 showEditor();
             } catch (err) {}
+            finally {
+                isTileLoading = false;
+            }
         });
 
         tileBackBtn.addEventListener('click', () => {
             showGrid();
         });
 
+        tileTitleInput.addEventListener('input', () => {
+            if (!isTileLoading) {
+                clearTimeout(autoSaveTimeout);
+                autoSaveTimeout = setTimeout(saveTileNote, 1000);
+            }
+        });
+
         async function saveTileNote() {
             if (!quillTile) return;
             if (!tileTitleInput.value && !quillTile.root.innerText.trim()) return;
-            tileSaveStatus.textContent = '保存中...';
+            
             const clone = quillTile.root.cloneNode(true);
             clone.querySelectorAll('.ql-ui').forEach(el => el.remove());
             const cleanContent = clone.innerHTML;
+            if (tileTitleInput.value === originalTitle && cleanContent === originalContent) {
+                // No changes, skip save
+                return;
+            }
+
+            if (tileSaveStatus) tileSaveStatus.textContent = '保存中...';
+
             const res = await fetch('api.php?action=save_note', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -402,6 +501,8 @@ if (!isset($_SESSION['user_id'])) {
             const result = await res.json().catch(() => ({}));
             if (result && result.success) {
                 currentTileNoteId = result.id;
+                originalTitle = tileTitleInput.value;
+                originalContent = cleanContent;
                 tileSaveStatus.textContent = '已保存';
                 setTimeout(() => tileSaveStatus.textContent = '', 2000);
                 resetAndFetch();
@@ -598,9 +699,235 @@ if (!isset($_SESSION['user_id'])) {
             });
         }
 
-        document.addEventListener('scroll', () => {
+        const manageNotebooksBtn = document.getElementById('manageNotebooksBtn');
+        const notebookModal = document.getElementById('notebookModal');
+        const notebookModalBackdrop = document.getElementById('notebookModalBackdrop');
+        const notebookNameInput = document.getElementById('notebookNameInput');
+        const notebookCreateBtn = document.getElementById('notebookCreateBtn');
+        const notebookCancelBtn = document.getElementById('notebookCancelBtn');
+        const notebookManagementList = document.getElementById('notebookManagementList');
+
+        function openNotebookModal() {
+            notebookModal.classList.remove('hidden');
+            notebookModal.classList.add('flex');
+            notebookNameInput.value = '';
+            renderNotebookManagementList();
+            notebookNameInput.focus();
+        }
+
+        function closeNotebookModal() {
+            notebookModal.classList.add('hidden');
+            notebookModal.classList.remove('flex');
+        }
+
+        function renderNotebookManagementList() {
+            if (!notebooks.length) {
+                notebookManagementList.innerHTML = '<p class="text-center text-xs text-gray-400 py-4">暂无笔记本</p>';
+                return;
+            }
+            notebookManagementList.innerHTML = notebooks.map(n => `
+                <div class="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-800/50 rounded-lg group">
+                    <span class="text-sm text-gray-700 dark:text-gray-300 truncate max-w-[200px]">${n.name}</span>
+                    <button onclick="deleteNotebook(${n.id})" class="text-gray-400 hover:text-red-500 p-1 rounded transition-colors opacity-0 group-hover:opacity-100" title="删除">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        async function createNotebook() {
+            const name = notebookNameInput.value.trim();
+            if (!name) return;
+            try {
+                const res = await fetch('api.php?action=create_notebook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    notebookNameInput.value = '';
+                    await fetchNotebooks();
+                    renderNotebookManagementList();
+                } else {
+                    alert('Failed to create notebook');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+
+        window.deleteNotebook = async function(id) {
+            if (!confirm('确定删除此笔记本？笔记将被移动到"未分类"。')) return;
+            try {
+                const res = await fetch('api.php?action=delete_notebook', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    if (selectedNotebookId === id) {
+                        selectedNotebookId = null;
+                        resetAndFetch();
+                    }
+                    await fetchNotebooks();
+                    renderNotebookManagementList();
+                } else {
+                    alert('Failed to delete notebook');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+        if (manageNotebooksBtn) manageNotebooksBtn.addEventListener('click', openNotebookModal);
+        if (notebookCancelBtn) notebookCancelBtn.addEventListener('click', closeNotebookModal);
+        if (notebookModalBackdrop) notebookModalBackdrop.addEventListener('click', closeNotebookModal);
+        if (notebookCreateBtn) notebookCreateBtn.addEventListener('click', createNotebook);
+        if (notebookNameInput) {
+            notebookNameInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') createNotebook();
+            });
+        }
+
+        const historyBtn = document.getElementById('historyBtn');
+        const historyModal = document.getElementById('historyModal');
+        const historyModalBackdrop = document.getElementById('historyModalBackdrop');
+        const closeHistoryModalBtn = document.getElementById('closeHistoryModalBtn');
+        const historyList = document.getElementById('historyList');
+        const historyPreview = document.getElementById('historyPreview');
+        const restoreHistoryBtn = document.getElementById('restoreHistoryBtn');
+        let currentHistoryId = null;
+
+        async function fetchHistory() {
+            if (!currentTileNoteId) return;
+            const res = await fetch(`api.php?action=get_history&id=${currentTileNoteId}`);
+            const data = await res.json();
+            renderHistoryList(data.history || []);
+        }
+
+        function renderHistoryList(list) {
+            if (list.length === 0) {
+                historyList.innerHTML = '<p class="text-xs text-gray-400 text-center py-4">无历史记录</p>';
+                return;
+            }
+            historyList.innerHTML = list.map(h => `
+                <div class="p-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg cursor-pointer transition-colors ${currentHistoryId == h.id ? 'bg-gray-100 dark:bg-gray-800' : ''}" onclick="loadHistoryDetail(${h.id})">
+                    <p class="text-xs font-medium text-gray-900 dark:text-gray-100">${new Date(h.created_at).toLocaleString()}</p>
+                    <p class="text-[10px] text-gray-500 truncate mt-1">${h.title || '无标题'}</p>
+                    <p class="text-[10px] text-gray-400 mt-0.5">Size: ${h.size}</p>
+                </div>
+            `).join('');
+        }
+
+        window.loadHistoryDetail = async function(hid) {
+            currentHistoryId = hid;
+            // Re-render list to update selection state (optional, but good for UI)
+            // Ideally we'd just update classes, but full re-render is cheap here or we can just select via DOM
+            const allItems = historyList.querySelectorAll('div');
+            allItems.forEach(el => el.classList.remove('bg-gray-100', 'dark:bg-gray-800'));
+            // This is lazy, but effective enough for now without re-rendering everything
+            // Actually, the click handler is on the div, so 'this' context or event target could work, 
+            // but we passed ID. Let's just fetch.
+            
+            historyPreview.innerHTML = '<p class="text-gray-400 text-center mt-10">加载中...</p>';
+            
+            try {
+                const res = await fetch(`api.php?action=get_history_detail&history_id=${hid}`);
+                const data = await res.json();
+                if (data.history) {
+                    historyPreview.innerHTML = `
+                        <h3 class="font-bold text-lg mb-4 pb-2 border-b border-gray-100 dark:border-gray-800">${data.history.title || '无标题'}</h3>
+                        <div class="ql-editor p-0">${data.history.content}</div>
+                    `;
+                    // Apply highlight if needed
+                    if (window.hljs) historyPreview.querySelectorAll('pre code').forEach((block) => hljs.highlightElement(block));
+                    
+                    restoreHistoryBtn.classList.remove('hidden');
+                    restoreHistoryBtn.onclick = () => restoreHistory(data.history);
+                }
+            } catch (e) {
+                historyPreview.innerHTML = '<p class="text-red-500 text-center mt-10">加载失败</p>';
+            }
+        };
+
+        async function restoreHistory(historyItem) {
+            if (!confirm('确定恢复到此版本？当前内容将被覆盖。')) return;
+            tileTitleInput.value = historyItem.title || '';
+            quillTile.root.innerHTML = historyItem.content || '';
+            await saveTileNote(); // Save as new current version
+            closeHistoryModal();
+        }
+
+        function openHistoryModal() {
+             if (!currentTileNoteId) return;
+             historyModal.classList.remove('hidden');
+             historyModal.classList.add('flex');
+             fetchHistory();
+             historyPreview.innerHTML = '<p class="text-gray-400 text-center mt-10">选择一个版本查看详情</p>';
+             restoreHistoryBtn.classList.add('hidden');
+        }
+
+        function closeHistoryModal() {
+             historyModal.classList.add('hidden');
+             historyModal.classList.remove('flex');
+        }
+
+        if (historyBtn) historyBtn.addEventListener('click', openHistoryModal);
+        if (closeHistoryModalBtn) closeHistoryModalBtn.addEventListener('click', closeHistoryModal);
+        if (historyModalBackdrop) historyModalBackdrop.addEventListener('click', closeHistoryModal);
+
+        window.togglePin = async function(id, e) {
+            e.stopPropagation();
+            try {
+                const res = await fetch('api.php?action=toggle_pin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    resetAndFetch();
+                }
+            } catch (err) {}
+        };
+
+        window.toggleFavorite = async function(id, currentVal, e) {
+            e.stopPropagation();
+            try {
+                const res = await fetch('api.php?action=toggle_favorite', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, is_favorite: currentVal ? 0 : 1 })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    resetAndFetch();
+                }
+            } catch (err) {}
+        };
+
+        window.moveToTrash = async function(id, e) {
+            e.stopPropagation();
+            if (!confirm('确定移至废纸篓？')) return;
+            try {
+                const res = await fetch('api.php?action=delete_note', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    resetAndFetch();
+                }
+            } catch (err) {}
+        };
+
+        const mainEl = document.querySelector('main');
+        mainEl.addEventListener('scroll', () => {
             if (loading || !hasMore) return;
-            const nearBottom = window.scrollY + window.innerHeight >= document.body.scrollHeight - 100;
+            const nearBottom = mainEl.scrollTop + mainEl.clientHeight >= mainEl.scrollHeight - 100;
             if (nearBottom) fetchNotes();
         });
 
