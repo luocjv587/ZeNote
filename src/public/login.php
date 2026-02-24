@@ -171,7 +171,17 @@ if (isset($_SESSION['user_id'])) {
 
                 if (res.ok) {
                     if (isLogin) {
-                        window.location.href = 'index.php';
+                        try {
+                            const s = await fetch('api.php?action=get_settings');
+                            const d = await s.json();
+                            if (d.tile_mode_enabled === 1) {
+                                window.location.href = 'tile.php';
+                            } else {
+                                window.location.href = 'index.php';
+                            }
+                        } catch (_) {
+                            window.location.href = 'index.php';
+                        }
                     } else {
                         // Auto login after register or ask to login
                         isLogin = true;

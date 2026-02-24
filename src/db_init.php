@@ -9,6 +9,7 @@ try {
             password TEXT NOT NULL,
             aliyun_api_key TEXT,
             aliyun_model_name TEXT DEFAULT 'qwen-plus',
+            tile_mode_enabled INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )",
         "CREATE TABLE IF NOT EXISTS z_article (

@@ -6,6 +6,19 @@ if (!isset($_SESSION['user_id'])) {
     header('Location: login.php');
     exit;
 }
+require_once __DIR__ . '/../config.php';
+$uid = $_SESSION['user_id'];
+try {
+    $stmt = $pdo->prepare("SELECT tile_mode_enabled FROM z_user WHERE id = ?");
+    $stmt->execute([$uid]);
+    $row = $stmt->fetch();
+    $hasNoteId = isset($_GET['note_id']) && $_GET['note_id'] !== '';
+    $isCreate = isset($_GET['create']) && $_GET['create'] === '1';
+    if ($row && isset($row['tile_mode_enabled']) && (int)$row['tile_mode_enabled'] === 1 && !$hasNoteId && !$isCreate) {
+        header('Location: tile.php');
+        exit;
+    }
+} catch (Exception $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -1909,6 +1922,15 @@ if (!isset($_SESSION['user_id'])) {
         (async () => {
             await fetchNotebooks();
             fetchNotes();
+            const params = new URLSearchParams(window.location.search);
+            const nid = parseInt(params.get('note_id'));
+            const createNew = params.get('create') === '1';
+            if (nid && !isNaN(nid)) {
+                loadNote(nid);
+            } else if (createNew) {
+                createNewNote();
+                showEditor();
+            }
             maybeSendBackupEmail();
         })();
 

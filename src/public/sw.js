@@ -2,6 +2,7 @@ const CACHE_NAME = 'zenote-v1';
 const urlsToCache = [
   './',
   './index.php',
+  './tile.php',
   './login.php',
   './manifest.json',
   './logo.svg',

@@ -30,6 +30,7 @@ function zenote_build_user_db($pdo, $userId)
             qq_email_last_sent_at DATETIME DEFAULT NULL,
             qq_smtp_host TEXT,
             qq_smtp_port INTEGER,
+            tile_mode_enabled INTEGER DEFAULT 0,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )");
 
@@ -82,11 +83,11 @@ function zenote_build_user_db($pdo, $userId)
             FOREIGN KEY (user_id) REFERENCES z_user(id)
         )");
 
-        $stmt = $pdo->prepare("SELECT id, username, password, aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at, qq_smtp_host, qq_smtp_port, created_at FROM z_user WHERE id = ?");
+        $stmt = $pdo->prepare("SELECT id, username, password, aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at, qq_smtp_host, qq_smtp_port, tile_mode_enabled, created_at FROM z_user WHERE id = ?");
         $stmt->execute([$userId]);
         $user = $stmt->fetch();
         if ($user) {
-            $ins = $tmpPdo->prepare("INSERT INTO z_user (id, username, password, aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at, qq_smtp_host, qq_smtp_port, created_at) VALUES (:id, :username, :password, :aliyun_api_key, :aliyun_model_name, :qq_email_account, :qq_email_password, :qq_email_to, :qq_email_auto_enabled, :qq_email_last_sent_at, :qq_smtp_host, :qq_smtp_port, :created_at)");
+            $ins = $tmpPdo->prepare("INSERT INTO z_user (id, username, password, aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at, qq_smtp_host, qq_smtp_port, tile_mode_enabled, created_at) VALUES (:id, :username, :password, :aliyun_api_key, :aliyun_model_name, :qq_email_account, :qq_email_password, :qq_email_to, :qq_email_auto_enabled, :qq_email_last_sent_at, :qq_smtp_host, :qq_smtp_port, :tile_mode_enabled, :created_at)");
             $ins->execute($user);
         }
 
@@ -728,7 +729,7 @@ if ($action === 'maybe_send_backup_email' && $method === 'POST') {
 }
 
 if ($action === 'get_settings' && $method === 'GET') {
-    $stmt = $pdo->prepare("SELECT aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at, qq_smtp_host, qq_smtp_port FROM z_user WHERE id = ?");
+    $stmt = $pdo->prepare("SELECT aliyun_api_key, aliyun_model_name, qq_email_account, qq_email_to, qq_email_auto_enabled, qq_email_last_sent_at, qq_smtp_host, qq_smtp_port, tile_mode_enabled FROM z_user WHERE id = ?");
     $stmt->execute([$user_id]);
     $user = $stmt->fetch();
     echo json_encode([
@@ -739,7 +740,8 @@ if ($action === 'get_settings' && $method === 'GET') {
         'qq_email_auto_enabled' => (int)($user['qq_email_auto_enabled'] ?? 0),
         'qq_email_last_sent_at' => $user['qq_email_last_sent_at'] ?? null,
         'qq_smtp_host' => $user['qq_smtp_host'] ?? '',
-        'qq_smtp_port' => isset($user['qq_smtp_port']) && $user['qq_smtp_port'] !== null ? (int)$user['qq_smtp_port'] : null
+        'qq_smtp_port' => isset($user['qq_smtp_port']) && $user['qq_smtp_port'] !== null ? (int)$user['qq_smtp_port'] : null,
+        'tile_mode_enabled' => isset($user['tile_mode_enabled']) ? (int)$user['tile_mode_enabled'] : 0
     ]);
     exit;
 }
@@ -757,7 +759,9 @@ if ($action === 'save_settings' && $method === 'POST') {
         $qqSmtpPort = $input['qq_smtp_port'] === '' ? 0 : (int)$input['qq_smtp_port'];
     }
 
-    $stmt = $pdo->prepare("SELECT qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled, qq_smtp_host, qq_smtp_port FROM z_user WHERE id = ?");
+    $tileMode = array_key_exists('tile_mode_enabled', $input) ? (int)$input['tile_mode_enabled'] : null;
+
+    $stmt = $pdo->prepare("SELECT qq_email_account, qq_email_password, qq_email_to, qq_email_auto_enabled, qq_smtp_host, qq_smtp_port, tile_mode_enabled FROM z_user WHERE id = ?");
     $stmt->execute([$user_id]);
     $current = $stmt->fetch();
 
@@ -767,9 +771,10 @@ if ($action === 'save_settings' && $method === 'POST') {
     $newAutoEnabled = $qqAutoEnabled !== null ? $qqAutoEnabled : (int)($current['qq_email_auto_enabled'] ?? 0);
     $newSmtpHost = $qqSmtpHost !== null ? $qqSmtpHost : ($current['qq_smtp_host'] ?? '');
     $newSmtpPort = $qqSmtpPort !== null ? $qqSmtpPort : (isset($current['qq_smtp_port']) ? (int)$current['qq_smtp_port'] : 0);
+    $newTileMode = $tileMode !== null ? $tileMode : (int)($current['tile_mode_enabled'] ?? 0);
 
-    $stmt = $pdo->prepare("UPDATE z_user SET aliyun_api_key = ?, aliyun_model_name = ?, qq_email_account = ?, qq_email_password = ?, qq_email_to = ?, qq_email_auto_enabled = ?, qq_smtp_host = ?, qq_smtp_port = ? WHERE id = ?");
-    $stmt->execute([$apiKey, $modelName, $newAccount, $newPassword, $newTo, $newAutoEnabled, $newSmtpHost, $newSmtpPort, $user_id]);
+    $stmt = $pdo->prepare("UPDATE z_user SET aliyun_api_key = ?, aliyun_model_name = ?, qq_email_account = ?, qq_email_password = ?, qq_email_to = ?, qq_email_auto_enabled = ?, qq_smtp_host = ?, qq_smtp_port = ?, tile_mode_enabled = ? WHERE id = ?");
+    $stmt->execute([$apiKey, $modelName, $newAccount, $newPassword, $newTo, $newAutoEnabled, $newSmtpHost, $newSmtpPort, $newTileMode, $user_id]);
 
     echo json_encode(['success' => true]);
     exit;

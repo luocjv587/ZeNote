@@ -123,6 +123,12 @@ try {
         $pdo->exec("ALTER TABLE z_user ADD COLUMN qq_smtp_port INTEGER");
     }
 
+    try {
+        $pdo->query("SELECT tile_mode_enabled FROM z_user LIMIT 1");
+    } catch (PDOException $e) {
+        $pdo->exec("ALTER TABLE z_user ADD COLUMN tile_mode_enabled INTEGER DEFAULT 0");
+    }
+
 } catch (PDOException $e) {
     die("Database connection failed: " . $e->getMessage());
 }

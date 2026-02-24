@@ -82,6 +82,18 @@ if (!isset($_SESSION['user_id'])) {
             </div>
 
             <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h2 class="text-lg font-semibold">平铺模式</h2>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">开启后默认进入平铺页面浏览笔记</p>
+                    </div>
+                    <button id="tileModeToggle" type="button" class="relative inline-flex h-6 w-11 items-center rounded-full border border-gray-200 dark:border-gray-700 bg-gray-200 dark:bg-gray-700 transition-colors">
+                        <span class="inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform translate-x-0"></span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5">
                 <h2 class="text-lg font-semibold">邮箱备份</h2>
                 <p class="text-xs text-gray-400 dark:text-gray-500 mt-1 mb-4">配置 QQ 邮箱，将数据库备份发送到指定邮箱</p>
                 <div class="space-y-4">
@@ -180,6 +192,7 @@ if (!isset($_SESSION['user_id'])) {
         const qqEmailLastSentText = document.getElementById('qqEmailLastSentText');
         const saveEmailSettingsBtn = document.getElementById('saveEmailSettingsBtn');
         const qqEmailTestBtn = document.getElementById('qqEmailTestBtn');
+        const tileModeToggle = document.getElementById('tileModeToggle');
 
         function updateAutoToggle(enabled) {
             if (!qqEmailAutoToggle) return;
@@ -203,6 +216,28 @@ if (!isset($_SESSION['user_id'])) {
             }
         }
 
+        function updateTileToggle(enabled) {
+            if (!tileModeToggle) return;
+            const knob = tileModeToggle.querySelector('span');
+            if (enabled) {
+                tileModeToggle.classList.remove('bg-gray-200', 'dark:bg-gray-700');
+                tileModeToggle.classList.add('bg-black', 'dark:bg-white');
+                if (knob) {
+                    knob.classList.remove('translate-x-0');
+                    knob.classList.add('translate-x-5');
+                }
+                tileModeToggle.dataset.enabled = '1';
+            } else {
+                tileModeToggle.classList.add('bg-gray-200', 'dark:bg-gray-700');
+                tileModeToggle.classList.remove('bg-black', 'dark:bg-white');
+                if (knob) {
+                    knob.classList.add('translate-x-0');
+                    knob.classList.remove('translate-x-5');
+                }
+                tileModeToggle.dataset.enabled = '0';
+            }
+        }
+
         fetch('api.php?action=get_settings')
             .then(res => res.json())
             .then(data => {
@@ -218,11 +253,13 @@ if (!isset($_SESSION['user_id'])) {
                     qqEmailLastSentText.textContent = '最近发送时间：' + data.qq_email_last_sent_at;
                     qqEmailLastSentText.classList.remove('hidden');
                 }
+                updateTileToggle(data.tile_mode_enabled === 1);
             });
 
         saveAiSettingsBtn.addEventListener('click', async () => {
             const apiKey = apiKeyInput.value.trim();
             const modelName = modelNameInput.value.trim();
+            
             
             saveAiSettingsBtn.disabled = true;
             saveAiSettingsBtn.textContent = 'Saving...';
@@ -252,6 +289,20 @@ if (!isset($_SESSION['user_id'])) {
             qqEmailAutoToggle.addEventListener('click', () => {
                 const current = qqEmailAutoToggle.dataset.enabled === '1';
                 updateAutoToggle(!current);
+            });
+        }
+
+        if (tileModeToggle) {
+            tileModeToggle.addEventListener('click', async () => {
+                const current = tileModeToggle.dataset.enabled === '1';
+                updateTileToggle(!current);
+                try {
+                    await fetch('api.php?action=save_settings', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ tile_mode_enabled: !current ? 1 : 0 })
+                    });
+                } catch (e) {}
             });
         }
 
